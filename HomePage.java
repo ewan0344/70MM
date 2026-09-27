@@ -18,8 +18,11 @@ public class HomePage extends JPanel {
         profileButton.setHorizontalAlignment(SwingConstants.LEFT);
 
         JButton diaryButton = new JButton("Diary");
+        diaryButton.setBackground(Color.decode("#aed6b0"));
         JButton watchlistButton = new JButton("Watchlist");
+        watchlistButton.setBackground(Color.decode("#aed6b0"));
         JButton listButton = new JButton("List");
+        listButton.setBackground(Color.decode("#aed6b0"));
 
         sidePanel.add(profileButton);
         sidePanel.add(diaryButton);
@@ -30,7 +33,7 @@ public class HomePage extends JPanel {
         mainArea.setBackground(Color.WHITE);
 
         JLabel logo = new JLabel("70mm", SwingConstants.CENTER);
-        logo.setFont(new Font("Arial", Font.BOLD, 100));
+        logo.setFont(new Font("Impact", Font.BOLD, 100));
 
         JPanel center = new JPanel();
         center.setBackground(Color.WHITE);
@@ -38,7 +41,9 @@ public class HomePage extends JPanel {
 
         JLabel question = new JLabel("What's on your mind?", SwingConstants.CENTER);
         question.setFont(new Font("Arial", Font.BOLD, 30));
-        JTextField thoughtBox = new JTextField();
+        JTextArea thoughtBox = new JTextArea(2,50);
+         thoughtBox.setBackground(Color.decode("#d1cfc9"));
+
         JButton postButton = new JButton("^");
 
         center.add(question);
