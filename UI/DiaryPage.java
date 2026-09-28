@@ -1,38 +1,41 @@
 import javax.swing.*;
 import java.awt.*;
 
-public class dairy{
-    static JFrame frame;
-    public static void main(String[] args)
+public class DiaryPage extends JPanel{ 
+    Main main;
+    
+    public DiaryPage(Main main)
     {
-      createWindow();
+      this.main=main;
       createUI();
-      frame.setVisible(true);
     }
-    
-    
 
- static void createWindow()
- {
-    frame = new JFrame("Movie Dairy");
-    frame.setSize(600,500);
-    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
- }
-
-
-static void createUI()
+    void createUI()
 {
+    setLayout(new BorderLayout());
     JPanel panel = new JPanel(new BorderLayout());
+
+    JPanel topPanel = new JPanel(new BorderLayout());
+    JButton backButton = new JButton("←");
+    backButton.addActionListener(e->
+    {
+     main.showPage("home");
+    });
+    topPanel.add(backButton,BorderLayout.WEST);
+
+
     JLabel label = new JLabel("Dairy");
     label.setFont(new Font("Arial",Font.BOLD,30));
-    panel.add(label,BorderLayout.NORTH);
-    frame.add(panel);
+    topPanel.add(label, BorderLayout.CENTER);
+    panel.add(topPanel,BorderLayout.NORTH);
+    
 
 
     JPanel monthPanel = createMonth("SEPTEMBER 2026");
     panel.add(monthPanel, BorderLayout.CENTER);
 
     JButton addmovie = new JButton("Add movie");
+    panel.add(addmovie,BorderLayout.SOUTH);
 
     addmovie.addActionListener(e->{
       JPanel moviePanel = new JPanel(new GridLayout(9,9));
@@ -56,13 +59,10 @@ static void createUI()
       moviePanel.add(dateField);
 
       int result = JOptionPane.showConfirmDialog
-      (frame,moviePanel,"Add Movie",JOptionPane.OK_CANCEL_OPTION);
+      (panel,moviePanel,"Add Movie",JOptionPane.OK_CANCEL_OPTION);
 
     });
-
-
-
-    panel.add(addmovie,BorderLayout.SOUTH);
+    add(panel,BorderLayout.CENTER);
 }
 
 static JPanel createMonth(String monthname)
