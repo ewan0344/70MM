@@ -1,72 +1,79 @@
 import javax.swing.*;
 import java.awt.*;
 
-public class DiaryPage extends JPanel {
-    JPanel moviePanel;
-
-    public DiaryPage(Main main) {
-        setBackground(Color.WHITE);
-        setLayout(new BorderLayout());
-
-        JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(Color.WHITE);
-        JButton back = new JButton("←");
-        JLabel title = new JLabel("Diary", SwingConstants.CENTER);
-        title.setFont(new Font("Arial", Font.BOLD, 24));
-        JButton add = new JButton("+ Add Movie");
-        top.add(back, BorderLayout.WEST);
-        top.add(title, BorderLayout.CENTER);
-        top.add(add, BorderLayout.EAST);
-
-        moviePanel = new JPanel();
-        moviePanel.setBackground(Color.WHITE);
-        moviePanel.setLayout(new BoxLayout(moviePanel, BoxLayout.Y_AXIS));
-        moviePanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
-        add(top, BorderLayout.NORTH);
-        add(new JScrollPane(moviePanel), BorderLayout.CENTER);
-
-        back.addActionListener(e -> main.showPage("home"));
-        add.addActionListener(e -> addMovie());
+public class dairy{
+    static JFrame frame;
+    public static void main(String[] args)
+    {
+      createWindow();
+      createUI();
+      frame.setVisible(true);
     }
+    
+    
 
-    private void addMovie() {
-        JTextField name = new JTextField();
-        JTextArea review = new JTextArea(5, 20);
+ static void createWindow()
+ {
+    frame = new JFrame("Movie Dairy");
+    frame.setSize(600,500);
+    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+ }
 
-        JPanel panel = new JPanel(new GridLayout(4, 1, 5, 5));
-        panel.add(new JLabel("Movie name:"));
-        panel.add(name);
-        panel.add(new JLabel("Your review:"));
-        panel.add(new JScrollPane(review));
 
-        int result = JOptionPane.showConfirmDialog(
-            this, panel, "Add Movie to Diary",
-            JOptionPane.OK_CANCEL_OPTION
-        );
+static void createUI()
+{
+    JPanel panel = new JPanel(new BorderLayout());
+    JLabel label = new JLabel("Dairy");
+    label.setFont(new Font("Arial",Font.BOLD,30));
+    panel.add(label,BorderLayout.NORTH);
+    frame.add(panel);
 
-        if (result == JOptionPane.OK_OPTION && !name.getText().trim().isEmpty()) {
-            JPanel movie = new JPanel(new BorderLayout());
-            movie.setBackground(Color.WHITE);
-            movie.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-            movie.setMaximumSize(new Dimension(600, 120));
 
-            JLabel movieName = new JLabel(name.getText());
-            movieName.setFont(new Font("Arial", Font.BOLD, 18));
+    JPanel monthPanel = createMonth("SEPTEMBER 2026");
+    panel.add(monthPanel, BorderLayout.CENTER);
 
-            JTextArea reviewText = new JTextArea(review.getText());
-            reviewText.setEditable(false);
-            reviewText.setLineWrap(true);
-            reviewText.setWrapStyleWord(true);
-            reviewText.setBackground(Color.WHITE);
+    JButton addmovie = new JButton("Add movie");
 
-            movie.add(movieName, BorderLayout.NORTH);
-            movie.add(reviewText, BorderLayout.CENTER);
+    addmovie.addActionListener(e->{
+      JPanel moviePanel = new JPanel(new GridLayout(9,9));
 
-            moviePanel.add(movie);
-            moviePanel.add(Box.createVerticalStrut(10));
-            moviePanel.revalidate();
-            moviePanel.repaint();
-        }
-    }
+      JLabel nameLabel = new JLabel("Add movie name");
+      JTextField nameField = new JTextField();
+
+      JLabel ratingLabel = new JLabel("Add Rating");
+      JTextField ratingField = new JTextField();
+
+      JLabel dateLabel = new JLabel("Date Watched");
+      JTextField dateField = new JTextField();
+
+      moviePanel.add(nameLabel);
+      moviePanel.add(nameField);
+
+      moviePanel.add(ratingLabel);
+      moviePanel.add(ratingField);
+
+      moviePanel.add(dateLabel);
+      moviePanel.add(dateField);
+
+      int result = JOptionPane.showConfirmDialog
+      (frame,moviePanel,"Add Movie",JOptionPane.OK_CANCEL_OPTION);
+
+    });
+
+
+
+    panel.add(addmovie,BorderLayout.SOUTH);
+}
+
+static JPanel createMonth(String monthname)
+{
+  JPanel monthPanel = new JPanel();
+  JLabel monthLabel = new JLabel(monthname);
+
+  monthLabel.setFont(new Font("Ariel",Font.PLAIN,25));
+  monthPanel.add(monthLabel);
+  return monthPanel;
+}
+
+
 }
