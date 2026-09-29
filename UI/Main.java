@@ -2,10 +2,12 @@ import javax.swing.*;
 import java.awt.*;
 
 public class Main extends JFrame {
+
     CardLayout cardLayout;
     JPanel mainPanel;
 
     public Main() {
+
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
@@ -18,10 +20,12 @@ public class Main extends JFrame {
         mainPanel.add(new ListPage(this), "list");
 
         add(mainPanel);
+
         setTitle("70mm");
         setSize(700, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+
         showPage("login");
     }
 
