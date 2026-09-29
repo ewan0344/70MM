@@ -9,20 +9,24 @@ public class HomePage extends JPanel {
         setBackground(Color.WHITE);
 
         JPanel sidePanel = new JPanel();
-        sidePanel.setBackground(Color.WHITE);
+        sidePanel.setBackground(Color.decode("#D6A36A"));
         sidePanel.setPreferredSize(new Dimension(180, 500));
-        sidePanel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-        sidePanel.setLayout(new GridLayout(5, 1));
+        sidePanel.setBorder(BorderFactory.createLineBorder(Color.decode("#D6A36A")));
+        sidePanel.setLayout(new GridLayout(4, 1));
 
-        JButton profileButton = new JButton("○   Profile");
-        profileButton.setHorizontalAlignment(SwingConstants.LEFT);
-
+        JButton profileButton = new JButton("Profile");
+        profileButton.setForeground(Color.WHITE);
+        
+        profileButton.setBackground(Color.decode("#A64B52"));
         JButton diaryButton = new JButton("Diary");
-        diaryButton.setBackground(Color.decode("#aed6b0"));
+        diaryButton.setForeground(Color.WHITE); 
+        diaryButton.setBackground(Color.decode("#A64B52"));
         JButton watchlistButton = new JButton("Watchlist");
-        watchlistButton.setBackground(Color.decode("#aed6b0"));
+        watchlistButton.setBackground(Color.decode("#A64B52"));
+        watchlistButton.setForeground(Color.WHITE); 
         JButton listButton = new JButton("List");
-        listButton.setBackground(Color.decode("#aed6b0"));
+        listButton.setBackground(Color.decode("#A64B52"));
+        listButton.setForeground(Color.WHITE); 
 
         sidePanel.add(profileButton);
         sidePanel.add(diaryButton);
@@ -30,21 +34,27 @@ public class HomePage extends JPanel {
         sidePanel.add(listButton);
 
         JPanel mainArea = new JPanel(new BorderLayout());
-        mainArea.setBackground(Color.WHITE);
+        mainArea.setBackground(Color.decode("#171415"));
 
         JLabel logo = new JLabel("70mm", SwingConstants.CENTER);
         logo.setFont(new Font("Impact", Font.BOLD, 100));
+        logo.setForeground(Color.decode("#D6A36A"));
 
         JPanel center = new JPanel();
-        center.setBackground(Color.WHITE);
+        center.setBackground(Color.decode("#171415"));
         center.setLayout(new GridLayout(3, 1, 10, 10));
 
         JLabel question = new JLabel("What's on your mind?", SwingConstants.CENTER);
+        question.setForeground(Color.WHITE);
         question.setFont(new Font("Arial", Font.BOLD, 30));
         JTextArea thoughtBox = new JTextArea(2,50);
-         thoughtBox.setBackground(Color.decode("#d1cfc9"));
+        thoughtBox.setBorder(BorderFactory.createLineBorder(Color.decode("#D6A36A")));
+        thoughtBox.setBackground(Color.decode("#242021"));
+        thoughtBox.setForeground(Color.WHITE);
+        JButton postButton = new JButton("SUBMIT");
+        postButton.setForeground(Color.WHITE); 
+        postButton.setBackground(Color.decode("#A64B52"));
 
-        JButton postButton = new JButton("^");
 
         center.add(question);
         center.add(thoughtBox);

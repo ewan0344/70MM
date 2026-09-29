@@ -14,8 +14,10 @@ public class DiaryPage extends JPanel{
 {
     setLayout(new BorderLayout());
     JPanel panel = new JPanel(new BorderLayout());
+    panel.setBackground(Color.decode("#171415"));
 
     JPanel topPanel = new JPanel(new BorderLayout());
+    topPanel.setBackground(Color.decode("#171415"));
     JButton backButton = new JButton("←");
     backButton.addActionListener(e->
     {
@@ -32,6 +34,7 @@ public class DiaryPage extends JPanel{
 
 
     JPanel monthPanel = createMonth("SEPTEMBER 2026");
+    monthPanel.setBackground(Color.decode("#171415"));
     panel.add(monthPanel, BorderLayout.CENTER);
 
     JButton addmovie = new JButton("Add movie");
