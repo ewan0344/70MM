@@ -5,21 +5,25 @@ public class ListPage extends JPanel {
     JPanel listPanel;
 
     public ListPage(Main main) {
-        setBackground(Color.WHITE);
+        setBackground(Color.decode("#171415"));
         setLayout(new BorderLayout());
 
         JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(Color.WHITE);
+        top.setBackground(Color.decode("#171415"));
         JButton back = new JButton("←");
+        back.setBackground(Color.decode("#A64B52"));
         JLabel title = new JLabel("Lists", SwingConstants.CENTER);
+        title.setForeground(Color.decode("#D6A36A"));
         title.setFont(new Font("Arial", Font.BOLD, 24));
         JButton create = new JButton("+ Create List");
+        create.setForeground(Color.decode("#D6A36A"));
+        create.setBackground(Color.decode("#A64B52"));
         top.add(back, BorderLayout.WEST);
         top.add(title, BorderLayout.CENTER);
         top.add(create, BorderLayout.EAST);
 
         listPanel = new JPanel();
-        listPanel.setBackground(Color.WHITE);
+        listPanel.setBackground(Color.decode("#171415"));
         listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
         listPanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
 

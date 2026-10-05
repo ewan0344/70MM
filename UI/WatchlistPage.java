@@ -16,7 +16,7 @@ public class WatchlistPage extends JPanel {
     }
     public WatchlistPage(Main main) {
         setLayout(new BorderLayout());
-        setBackground(new Color(35, 20, 55));
+        setBackground(Color.decode("#171415"));
         createPosterDatabase();
         watchedMovies.add(createMovie("Avatar"));
         watchedMovies.add(createMovie("Interstellar"));

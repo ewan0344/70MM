@@ -19,6 +19,7 @@ public class DiaryPage extends JPanel{
     JPanel topPanel = new JPanel(new BorderLayout());
     topPanel.setBackground(Color.decode("#171415"));
     JButton backButton = new JButton("←");
+    backButton.setBackground(Color.decode("#A64B52"));
     backButton.addActionListener(e->
     {
      main.showPage("home");
@@ -34,22 +35,31 @@ public class DiaryPage extends JPanel{
 
 
     JPanel monthPanel = createMonth("SEPTEMBER 2026");
+    monthPanel.setForeground(Color.decode("#D6A36A"));
     monthPanel.setBackground(Color.decode("#171415"));
     panel.add(monthPanel, BorderLayout.CENTER);
 
     JButton addmovie = new JButton("Add movie");
+    addmovie.setForeground(Color.decode("#D6A36A"));
+    addmovie.setBackground(Color.decode("#A64B52"));
     panel.add(addmovie,BorderLayout.SOUTH);
 
     addmovie.addActionListener(e->{
       JPanel moviePanel = new JPanel(new GridLayout(9,9));
 
       JLabel nameLabel = new JLabel("Add movie name");
+      nameLabel.setForeground(Color.decode("#D6A36A"));
+      nameLabel.setBackground(Color.decode("#A64B52"));
       JTextField nameField = new JTextField();
 
       JLabel ratingLabel = new JLabel("Add Rating");
+      ratingLabel.setForeground(Color.decode("#D6A36A"));
+      ratingLabel.setBackground(Color.decode("#A64B52"));
       JTextField ratingField = new JTextField();
 
       JLabel dateLabel = new JLabel("Date Watched");
+      dateLabel.setBackground(Color.decode("#A64B52"));
+      dateLabel.setForeground(Color.decode("#D6A36A"));
       JTextField dateField = new JTextField();
 
       moviePanel.add(nameLabel);
