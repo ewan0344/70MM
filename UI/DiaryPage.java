@@ -19,6 +19,7 @@ public class DiaryPage extends JPanel{
     JPanel topPanel = new JPanel(new BorderLayout());
     topPanel.setBackground(Color.decode("#171415"));
     JButton backButton = new JButton("←");
+    backButton.setForeground(Color.decode("#D6A36A"));
     backButton.setBackground(Color.decode("#A64B52"));
     backButton.addActionListener(e->
     {
@@ -28,6 +29,7 @@ public class DiaryPage extends JPanel{
 
 
     JLabel label = new JLabel("Dairy");
+    label.setForeground(Color.decode("#D6A36A"));
     label.setFont(new Font("Arial",Font.BOLD,30));
     topPanel.add(label, BorderLayout.CENTER);
     panel.add(topPanel,BorderLayout.NORTH);
@@ -81,8 +83,9 @@ public class DiaryPage extends JPanel{
 static JPanel createMonth(String monthname)
 {
   JPanel monthPanel = new JPanel();
+  monthPanel.setBackground(Color.decode("#A64B52"));
   JLabel monthLabel = new JLabel(monthname);
-
+  monthLabel.setForeground(Color.decode("#D6A36A"));
   monthLabel.setFont(new Font("Ariel",Font.PLAIN,25));
   monthPanel.add(monthLabel);
   return monthPanel;

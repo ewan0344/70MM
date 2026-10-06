@@ -42,13 +42,17 @@ public class ListPage extends JPanel {
 
         if (listName != null && !listName.trim().isEmpty()) {
             JPanel list = new JPanel(new BorderLayout());
-            list.setBackground(Color.WHITE);
+            list.setBackground(Color.decode("#222021"));
+            list.setForeground(Color.decode("#D6A36A"));
             list.setBorder(BorderFactory.createLineBorder(Color.BLACK));
             list.setMaximumSize(new Dimension(600, 70));
 
             JLabel name = new JLabel("  " + listName);
+            name.setForeground(Color.decode("#D6A36A"));
             name.setFont(new Font("Arial", Font.BOLD, 18));
             JButton open = new JButton("Open");
+            open.setBackground(Color.decode("#A64B52"));
+            open.setForeground(Color.decode("#D6A36A"));
 
             list.add(name, BorderLayout.CENTER);
             list.add(open, BorderLayout.EAST);
