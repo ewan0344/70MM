@@ -63,6 +63,13 @@ public class DiaryPage extends JPanel{
       dateLabel.setBackground(Color.decode("#A64B52"));
       dateLabel.setForeground(Color.decode("#D6A36A"));
       JTextField dateField = new JTextField();
+      
+      JLabel review = new JLabel("Add review");
+      review.setForeground(Color.decode("#A64B52"));
+      review.setBackground(Color.decode("#A64B52"));
+      JTextField reviewField = new JTextField();
+      
+      
 
       moviePanel.add(nameLabel);
       moviePanel.add(nameField);
@@ -72,6 +79,9 @@ public class DiaryPage extends JPanel{
 
       moviePanel.add(dateLabel);
       moviePanel.add(dateField);
+      
+      moviePanel.add(review);
+      moviePanel.add(reviewField);
 
       int result = JOptionPane.showConfirmDialog
       (panel,moviePanel,"Add Movie",JOptionPane.OK_CANCEL_OPTION);

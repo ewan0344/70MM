@@ -7,6 +7,8 @@ public class Main extends JFrame {
     JPanel mainPanel;
 
     public Main() {
+    	
+    	DatabaseSetup.initialize();
 
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
