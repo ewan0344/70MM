@@ -18,6 +18,7 @@ public class Main extends JFrame {
         mainPanel.add(new HomePage(this), "home");
         mainPanel.add(new ProfilePage(this), "profile");
         mainPanel.add(new DiaryPage(this), "diary");
+        mainPanel.add(new PosterTestPage(this), "posterTest");
         mainPanel.add(new WatchlistPage(this), "watchlist");
         mainPanel.add(new ListPage(this), "list");
 

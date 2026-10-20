@@ -1,3 +1,4 @@
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -18,6 +19,7 @@ public class DiaryPage extends JPanel{
 
     JPanel topPanel = new JPanel(new BorderLayout());
     topPanel.setBackground(Color.decode("#171415"));
+
     JButton backButton = new JButton("←");
     backButton.setForeground(Color.decode("#D6A36A"));
     backButton.setBackground(Color.decode("#A64B52"));
@@ -32,6 +34,18 @@ public class DiaryPage extends JPanel{
     label.setForeground(Color.decode("#D6A36A"));
     label.setFont(new Font("Arial",Font.BOLD,30));
     topPanel.add(label, BorderLayout.CENTER);
+
+    // Test Posters button
+    JButton testPostersButton = new JButton("Test Posters");
+    testPostersButton.setForeground(Color.decode("#D6A36A"));
+    testPostersButton.setBackground(Color.decode("#A64B52"));
+
+    testPostersButton.addActionListener(e -> {
+        main.showPage("posterTest");
+    });
+
+    topPanel.add(testPostersButton, BorderLayout.EAST);
+
     panel.add(topPanel,BorderLayout.NORTH);
     
 
