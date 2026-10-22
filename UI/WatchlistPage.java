@@ -125,6 +125,19 @@ public class WatchlistPage extends JPanel {
         name.setForeground(TEXT);
         name.setFont(new Font("SansSerif", Font.BOLD, 13));
         card.add(name, BorderLayout.CENTER);
+<<<<<<< HEAD
+=======
+        //clickable title
+        name.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        name.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                main.showMovieDetails(movie.id);
+            }
+        });
+
+>>>>>>> branch 'main' of https://github.com/ewan0344/70MM.git
         JPanel actions = new JPanel(new GridLayout(0, 1, 4, 4));
         actions.setOpaque(false);
         if (!watched) {

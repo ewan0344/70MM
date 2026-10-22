@@ -34,7 +34,50 @@ public class Main extends JFrame {
     }
 
     public void showPage(String pageName) {
+
+        if ("watchlist".equals(pageName)) {
+            mainPanel.remove(
+                getWatchlistPage()
+            );
+
+            WatchlistPage watchlist = new WatchlistPage(this);
+            mainPanel.add(watchlist, "watchlist");
+        }
+
         cardLayout.show(mainPanel, pageName);
+        mainPanel.revalidate();
+        mainPanel.repaint();
+    }
+
+    private Component getWatchlistPage() {
+        for (Component component : mainPanel.getComponents()) {
+            if (component instanceof WatchlistPage) {
+                return component;
+            }
+        }
+
+        return new JPanel();
+    }
+    
+    public void showMovieDetails(int movieId) {
+
+        // Remove any old movie-details page
+        for (Component component : mainPanel.getComponents()) {
+            if (component instanceof MovieDetailsPage) {
+                mainPanel.remove(component);
+            }
+        }
+
+        // Create a page for the selected movie
+        String pageName = "movieDetails";
+
+        MovieDetailsPage page = new MovieDetailsPage(this, movieId);
+        mainPanel.add(page, pageName);
+
+        cardLayout.show(mainPanel, pageName);
+
+        mainPanel.revalidate();
+        mainPanel.repaint();
     }
 
     public static void main(String[] args) {
