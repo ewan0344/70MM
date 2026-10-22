@@ -31,10 +31,6 @@ public class LoginPage extends JPanel {
         loginButton.setForeground(Color.decode("#F1E9DD"));
         loginButton.setBackground(Color.decode("#A64B52"));
 
-        JButton signupButton = new JButton("Don't have an account? Sign up");
-        signupButton.setForeground(Color.decode("#F1E9DD"));
-        signupButton.setBackground(Color.decode("#A64B52"));
-
         box.add(title);
         box.add(usernameLabel);
         box.add(username);
@@ -46,12 +42,15 @@ public class LoginPage extends JPanel {
         outside.setOpaque(false);
 
         outside.add(box, BorderLayout.CENTER);
-        outside.add(signupButton, BorderLayout.SOUTH);
+        
 
         add(outside);
 
-        loginButton.addActionListener(e -> main.showPage("home"));
-        signupButton.addActionListener(e -> main.showPage("signup"));
+        loginButton.addActionListener(e -> {
+    main.setUsername(username.getText().trim());
+    main.showPage("home");
+     });
+    
     }
     @Override
     protected void paintComponent(Graphics g) {

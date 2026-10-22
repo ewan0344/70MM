@@ -6,15 +6,17 @@ public class Main extends JFrame {
     CardLayout cardLayout;
     JPanel mainPanel;
 
+    // Stores the username entered on the login page
+    String currentUsername = "Username";
+
     public Main() {
-    	
-    	DatabaseSetup.initialize();
+
+        DatabaseSetup.initialize();
 
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
         mainPanel.add(new LoginPage(this), "login");
-        mainPanel.add(new SignupPage(this), "signup");
         mainPanel.add(new HomePage(this), "home");
         mainPanel.add(new ProfilePage(this), "profile");
         mainPanel.add(new DiaryPage(this), "diary");
@@ -33,12 +35,15 @@ public class Main extends JFrame {
         showPage("login");
     }
 
+    // Save the username entered by the user
+    public void setUsername(String username) {
+        currentUsername = username;
+    }
+
     public void showPage(String pageName) {
 
         if ("watchlist".equals(pageName)) {
-            mainPanel.remove(
-                getWatchlistPage()
-            );
+            mainPanel.remove(getWatchlistPage());
 
             WatchlistPage watchlist = new WatchlistPage(this);
             mainPanel.add(watchlist, "watchlist");
@@ -58,7 +63,7 @@ public class Main extends JFrame {
 
         return new JPanel();
     }
-    
+
     public void showMovieDetails(int movieId) {
 
         // Remove any old movie-details page
@@ -81,6 +86,8 @@ public class Main extends JFrame {
     }
 
     public static void main(String[] args) {
-        new Main().setVisible(true);
+        SwingUtilities.invokeLater(() -> {
+            new Main().setVisible(true);
+        });
     }
 }

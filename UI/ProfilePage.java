@@ -46,11 +46,7 @@ public class ProfilePage extends JPanel {
         JPanel info = new JPanel(new GridLayout(3, 1));
         info.setBackground(BG);
 
-        JLabel photo = new JLabel("○", SwingConstants.CENTER);
-        photo.setFont(new Font("Arial", Font.PLAIN, 55));
-        photo.setForeground(TEXT);
-
-        JLabel username = new JLabel("Username", SwingConstants.CENTER);
+        JLabel username = new JLabel(main.currentUsername, SwingConstants.CENTER);
         username.setForeground(TEXT);
         username.setFont(new Font("Arial", Font.BOLD, 20));
 
@@ -59,7 +55,7 @@ public class ProfilePage extends JPanel {
         activity.setForeground(GOLD);
         activity.setFont(new Font("Arial", Font.BOLD, 18));
 
-        info.add(photo);
+        
         info.add(username);
         info.add(activity);
 
