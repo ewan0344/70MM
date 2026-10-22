@@ -15,7 +15,7 @@ public class WatchlistPage extends JPanel {
     Color BG = Color.decode("#14141C");
     Color CARD = Color.decode("#23232E");
     Color TEXT = Color.WHITE;
-    Color ACCENT = Color.decode("#BE374B");
+    Color ACCENT = Color.decode("#A64B52");
 
     public WatchlistPage(Main main) {
         this.main = main;
