@@ -10,8 +10,7 @@ public class WatchlistPage extends JPanel {
 
     Main main;
 
-    JPanel watchedPanel;
-    JPanel wantedPanel;
+    JPanel moviePanel;
 
     Color BG = Color.decode("#14141C");
     Color CARD = Color.decode("#23232E");
@@ -46,16 +45,10 @@ public class WatchlistPage extends JPanel {
 
         add(top, BorderLayout.NORTH);
 
-        JPanel lists = new JPanel(new GridLayout(1, 2, 18, 0));
-        lists.setOpaque(false);
+        moviePanel = new JPanel(new GridLayout(0, 3, 12, 12));
+        moviePanel.setBackground(BG);
 
-        wantedPanel = new JPanel(new GridLayout(0, 2, 12, 12));
-        watchedPanel = new JPanel(new GridLayout(0, 2, 12, 12));
-
-        lists.add(makeSection("WANTED", wantedPanel));
-        lists.add(makeSection("WATCHED", watchedPanel));
-
-        JScrollPane scroll = new JScrollPane(lists);
+        JScrollPane scroll = new JScrollPane(moviePanel);
         scroll.setBorder(null);
         scroll.getViewport().setBackground(BG);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
@@ -64,22 +57,6 @@ public class WatchlistPage extends JPanel {
 
         ensureWatchlistTable();
         refresh();
-    }
-
-    JPanel makeSection(String heading, JPanel cards) {
-        JPanel section = new JPanel(new BorderLayout(0, 10));
-        section.setOpaque(false);
-
-        JLabel label = new JLabel(heading);
-        label.setForeground(new Color(230, 190, 120));
-        label.setFont(new Font("SansSerif", Font.BOLD, 17));
-
-        cards.setBackground(BG);
-
-        section.add(label, BorderLayout.NORTH);
-        section.add(cards, BorderLayout.CENTER);
-
-        return section;
     }
 
     void styleButton(JButton button) {
@@ -109,12 +86,12 @@ public class WatchlistPage extends JPanel {
     }
 
     void refresh() {
-        watchedPanel.removeAll();
-        wantedPanel.removeAll();
+        moviePanel.removeAll();
 
-        String sql = "SELECT m.tmdb_id, m.title, w.status " +
+        String sql = "SELECT m.tmdb_id, m.title " +
                      "FROM watchlist_items w " +
                      "JOIN movies_new m ON m.tmdb_id = w.tmdb_id " +
+                     "WHERE w.status <> 'WATCHED' " +
                      "ORDER BY m.title";
 
         try (Connection con = DatabaseManager.getConnection();
@@ -124,26 +101,15 @@ public class WatchlistPage extends JPanel {
             while (rs.next()) {
                 int id = rs.getInt("tmdb_id");
                 String title = rs.getString("title");
-                String status = rs.getString("status");
-
-                JPanel card = movieCard(id, title,
-                    "WATCHED".equalsIgnoreCase(status));
-
-                if ("WATCHED".equalsIgnoreCase(status)) {
-                    watchedPanel.add(card);
-                } else {
-                    wantedPanel.add(card);
-                }
+                moviePanel.add(movieCard(id, title, false));
             }
 
         } catch (Exception ex) {
             showError("Could not load watchlist.", ex);
         }
 
-        watchedPanel.revalidate();
-        watchedPanel.repaint();
-        wantedPanel.revalidate();
-        wantedPanel.repaint();
+        moviePanel.revalidate();
+        moviePanel.repaint();
     }
 
     JPanel movieCard(int id, String title, boolean watched) {
@@ -274,10 +240,10 @@ public class WatchlistPage extends JPanel {
                 ps.executeUpdate();
             }
 
-            String update = "UPDATE watchlist_items " +
-                            "SET status = 'WATCHED' WHERE tmdb_id = ?";
+            // Remove the movie from the watchlist only after adding it to Diary.
+            String delete = "DELETE FROM watchlist_items WHERE tmdb_id = ?";
 
-            try (PreparedStatement ps = con.prepareStatement(update)) {
+            try (PreparedStatement ps = con.prepareStatement(delete)) {
                 ps.setInt(1, movieId);
                 ps.executeUpdate();
             }
@@ -288,7 +254,10 @@ public class WatchlistPage extends JPanel {
             refresh();
 
             JOptionPane.showMessageDialog(
-                this, "Movie marked as watched and added to your Diary!");
+                this, "Movie moved to your Diary!");
+
+            // Open Diary; DiaryPage refreshes its data whenever it becomes visible.
+            main.showPage("diary");
 
         } catch (Exception ex) {
             if (con != null) {

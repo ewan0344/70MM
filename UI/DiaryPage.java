@@ -15,6 +15,14 @@ public class DiaryPage extends JPanel {
         createUI();
         createDiaryTable();
         refreshDiary();
+
+        // Reload Diary whenever the user navigates back to this page.
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                refreshDiary();
+            }
+        });
     }
 
     void createUI() {
