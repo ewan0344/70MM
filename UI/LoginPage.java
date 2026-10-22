@@ -4,7 +4,7 @@ import java.awt.*;
 public class LoginPage extends JPanel {
     public LoginPage(Main main) {
 
-        setBackground(Color.decode("#171415"));
+        setOpaque(false);
         setLayout(new GridBagLayout());
 
         JPanel box = new JPanel();
@@ -43,7 +43,7 @@ public class LoginPage extends JPanel {
         box.add(loginButton);
 
         JPanel outside = new JPanel(new BorderLayout());
-        outside.setBackground(Color.WHITE);
+        outside.setOpaque(false);
 
         outside.add(box, BorderLayout.CENTER);
         outside.add(signupButton, BorderLayout.SOUTH);
@@ -53,4 +53,10 @@ public class LoginPage extends JPanel {
         loginButton.addActionListener(e -> main.showPage("home"));
         signupButton.addActionListener(e -> main.showPage("signup"));
     }
+    @Override
+    protected void paintComponent(Graphics g) {
+    super.paintComponent(g);
+    ImageIcon img = new ImageIcon("UI/bgreel.png");
+    g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
+}
 }
