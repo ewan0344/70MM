@@ -4,6 +4,8 @@ import javax.swing.event.*;
 import java.awt.*;
 import java.io.File;
 import java.sql.*;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
 
 public class DiaryPage extends JPanel {
 
@@ -12,11 +14,11 @@ public class DiaryPage extends JPanel {
 
     public DiaryPage(Main main) {
         this.main = main;
+
         createUI();
         createDiaryTable();
         refreshDiary();
 
-        // Reload Diary whenever the user navigates back to this page
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
@@ -38,14 +40,13 @@ public class DiaryPage extends JPanel {
         backButton.setForeground(Color.decode("#D6A36A"));
         backButton.setBackground(Color.decode("#A64B52"));
         backButton.addActionListener(e -> main.showPage("home"));
-
         topPanel.add(backButton, BorderLayout.WEST);
 
         JLabel label = new JLabel("Diary", JLabel.CENTER);
         label.setForeground(Color.decode("#D6A36A"));
         label.setFont(new Font("Arial", Font.BOLD, 30));
-
         topPanel.add(label, BorderLayout.CENTER);
+
         panel.add(topPanel, BorderLayout.NORTH);
 
         diaryPanel = new JPanel();
@@ -126,15 +127,27 @@ public class DiaryPage extends JPanel {
 
         JTextField nameField = new JTextField();
         JTextField ratingField = new JTextField();
+
         JTextField dateField = new JTextField();
+        dateField.setEditable(false);
+        dateField.setBackground(Color.WHITE);
+
+        JButton calendarButton = new JButton("Calendar");
+
+        JPanel datePanel = new JPanel(new BorderLayout(5, 0));
+        datePanel.add(dateField, BorderLayout.CENTER);
+        datePanel.add(calendarButton, BorderLayout.EAST);
+
+        calendarButton.addActionListener(e -> showCalendar(dateField));
+
         JTextField reviewField = new JTextField();
 
         moviePanel.add(new JLabel("Movie name"));
         moviePanel.add(nameField);
         moviePanel.add(new JLabel("Rating (0-10)"));
         moviePanel.add(ratingField);
-        moviePanel.add(new JLabel("Date watched (DD-MM-YYYY)"));
-        moviePanel.add(dateField);
+        moviePanel.add(new JLabel("Date watched"));
+        moviePanel.add(datePanel);
         moviePanel.add(new JLabel("Review"));
         moviePanel.add(reviewField);
 
@@ -200,7 +213,8 @@ public class DiaryPage extends JPanel {
 
                     if (suggestions.getComponentCount() > 0
                             && nameField.isShowing()) {
-                        suggestions.show(nameField, 0, nameField.getHeight());
+                        suggestions.show(
+                            nameField, 0, nameField.getHeight());
                     }
 
                 } catch (Exception ex) {
@@ -229,7 +243,7 @@ public class DiaryPage extends JPanel {
 
         if (rating.isEmpty() || date.isEmpty()) {
             JOptionPane.showMessageDialog(
-                this, "Enter a rating and date watched.");
+                this, "Enter a rating and select a date.");
             return;
         }
 
@@ -241,6 +255,7 @@ public class DiaryPage extends JPanel {
                     this, "Rating must be between 0 and 10.");
                 return;
             }
+
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Enter a valid rating.");
             return;
@@ -268,12 +283,198 @@ public class DiaryPage extends JPanel {
         }
     }
 
-    void addToDiary(int entryId, int id, String title,
-                    String rating, String date, String review) {
+    // Open calendar with month and year selectors
+    void showCalendar(JTextField dateField) {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+
+        JDialog calendar = new JDialog(
+            owner instanceof Frame ? (Frame) owner : null,
+            "Select Date Watched",
+            true
+        );
+
+        calendar.setSize(390, 400);
+        calendar.setMinimumSize(new Dimension(390, 400));
+        calendar.setLocationRelativeTo(this);
+        calendar.setLayout(new BorderLayout(5, 5));
+
+        JPanel top = new JPanel(new BorderLayout(5, 5));
+        top.setBackground(Color.decode("#171415"));
+
+        JButton previous = new JButton("←");
+        JButton next = new JButton("→");
+
+        JLabel monthLabel = new JLabel("", JLabel.CENTER);
+        monthLabel.setForeground(Color.decode("#D6A36A"));
+        monthLabel.setFont(new Font("Arial", Font.BOLD, 18));
+
+        JButton yearButton = new JButton();
+        yearButton.setForeground(Color.decode("#D6A36A"));
+        yearButton.setBackground(Color.decode("#242021"));
+        yearButton.setFocusPainted(false);
+        yearButton.setMargin(new Insets(3, 8, 3, 8));
+
+        JPanel center = new JPanel(new BorderLayout(5, 0));
+        center.setBackground(Color.decode("#171415"));
+        center.add(monthLabel, BorderLayout.CENTER);
+        center.add(yearButton, BorderLayout.EAST);
+
+        top.add(previous, BorderLayout.WEST);
+        top.add(center, BorderLayout.CENTER);
+        top.add(next, BorderLayout.EAST);
+
+        JPanel daysPanel = new JPanel(new GridLayout(7, 7, 3, 3));
+        daysPanel.setBackground(Color.decode("#171415"));
+        daysPanel.setBorder(
+            BorderFactory.createEmptyBorder(5, 5, 5, 5));
+
+        calendar.add(top, BorderLayout.NORTH);
+        calendar.add(daysPanel, BorderLayout.CENTER);
+
+        YearMonth[] currentMonth = {YearMonth.now()};
+
+        try {
+            if (!dateField.getText().isEmpty()) {
+                LocalDate selectedDate = LocalDate.parse(
+                    dateField.getText(),
+                    DateTimeFormatter.ofPattern("dd-MM-yyyy")
+                );
+
+                currentMonth[0] = YearMonth.from(selectedDate);
+            }
+        } catch (Exception ex) {
+            currentMonth[0] = YearMonth.now();
+        }
+
+        Runnable refresh = () -> {
+            yearButton.setText("Year ▾");
+
+            updateCalendar(
+                currentMonth[0],
+                monthLabel,
+                daysPanel,
+                calendar,
+                dateField
+            );
+        };
+
+        previous.addActionListener(e -> {
+            currentMonth[0] = currentMonth[0].minusMonths(1);
+            refresh.run();
+        });
+
+        next.addActionListener(e -> {
+            currentMonth[0] = currentMonth[0].plusMonths(1);
+            refresh.run();
+        });
+
+        yearButton.addActionListener(e -> {
+            int currentYear = currentMonth[0].getYear();
+            int thisYear = Year.now().getValue();
+
+            Integer[] years = new Integer[101];
+
+            for (int i = 0; i < years.length; i++) {
+                years[i] = thisYear - 80 + i;
+            }
+
+            JComboBox<Integer> yearList = new JComboBox<>(years);
+            yearList.setSelectedItem(currentYear);
+
+            int result = JOptionPane.showConfirmDialog(
+                calendar,
+                yearList,
+                "Select Year",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+            );
+
+            if (result == JOptionPane.OK_OPTION) {
+                Integer selectedYear =
+                    (Integer) yearList.getSelectedItem();
+
+                if (selectedYear != null) {
+                    currentMonth[0] = YearMonth.of(
+                        selectedYear,
+                        currentMonth[0].getMonth()
+                    );
+
+                    refresh.run();
+                }
+            }
+        });
+
+        refresh.run();
+        calendar.setVisible(true);
+    }
+
+    // Draw numbered dates in a seven-column calendar
+    void updateCalendar(
+            YearMonth month,
+            JLabel monthLabel,
+            JPanel daysPanel,
+            JDialog calendar,
+            JTextField dateField) {
+
+        monthLabel.setText(month.getMonth().toString());
+
+        daysPanel.removeAll();
+        daysPanel.setLayout(new GridLayout(7, 7, 3, 3));
+
+        String[] weekdays = {
+            "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
+        };
+
+        for (String day : weekdays) {
+            JLabel label = new JLabel(day, JLabel.CENTER);
+            label.setForeground(Color.decode("#D6A36A"));
+            label.setFont(new Font("Arial", Font.BOLD, 13));
+            daysPanel.add(label);
+        }
+
+        int firstDay = month.atDay(1).getDayOfWeek().getValue();
+
+        for (int i = 1; i < firstDay; i++) {
+            daysPanel.add(new JLabel(""));
+        }
+
+        for (int day = 1; day <= month.lengthOfMonth(); day++) {
+            int selectedDay = day;
+
+            JButton dayButton = new JButton(String.valueOf(day));
+            dayButton.setBackground(Color.decode("#A64B52"));
+            dayButton.setForeground(Color.WHITE);
+            dayButton.setMargin(new Insets(2, 2, 2, 2));
+
+            dayButton.addActionListener(e -> {
+                LocalDate selectedDate = month.atDay(selectedDay);
+
+                DateTimeFormatter formatter =
+                    DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+                dateField.setText(selectedDate.format(formatter));
+                calendar.dispose();
+            });
+
+            daysPanel.add(dayButton);
+        }
+
+        while (daysPanel.getComponentCount() < 49) {
+            daysPanel.add(new JLabel(""));
+        }
+
+        daysPanel.revalidate();
+        daysPanel.repaint();
+    }
+
+    void addToDiary(
+            int entryId, int id, String title,
+            String rating, String date, String review) {
 
         JPanel movie = new JPanel(new BorderLayout(10, 10));
         movie.setBackground(Color.decode("#241E20"));
-        movie.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        movie.setBorder(
+            BorderFactory.createEmptyBorder(10, 10, 10, 10));
         movie.setMaximumSize(new Dimension(650, 180));
         movie.setAlignmentX(Component.LEFT_ALIGNMENT);
 
