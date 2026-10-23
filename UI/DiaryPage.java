@@ -12,15 +12,18 @@ public class DiaryPage extends JPanel {
     Main main;
     JPanel diaryPanel;
 
+    Color BG = Color.decode("#171415");
+    Color CARD = Color.decode("#241E20");
+    Color GOLD = Color.decode("#D6A36A");
+    Color RED = Color.decode("#A64B52");
+
     public DiaryPage(Main main) {
         this.main = main;
-
         createUI();
         createDiaryTable();
         refreshDiary();
 
         addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
                 refreshDiary();
             }
@@ -31,19 +34,19 @@ public class DiaryPage extends JPanel {
         setLayout(new BorderLayout());
 
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.decode("#171415"));
+        panel.setBackground(BG);
 
         JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setBackground(Color.decode("#171415"));
+        topPanel.setBackground(BG);
 
         JButton backButton = new JButton("←");
-        backButton.setForeground(Color.decode("#D6A36A"));
-        backButton.setBackground(Color.decode("#A64B52"));
+        backButton.setForeground(GOLD);
+        backButton.setBackground(RED);
         backButton.addActionListener(e -> main.showPage("home"));
         topPanel.add(backButton, BorderLayout.WEST);
 
         JLabel label = new JLabel("Diary", JLabel.CENTER);
-        label.setForeground(Color.decode("#D6A36A"));
+        label.setForeground(GOLD);
         label.setFont(new Font("Arial", Font.BOLD, 30));
         topPanel.add(label, BorderLayout.CENTER);
 
@@ -51,40 +54,36 @@ public class DiaryPage extends JPanel {
 
         diaryPanel = new JPanel();
         diaryPanel.setLayout(new BoxLayout(diaryPanel, BoxLayout.Y_AXIS));
-        diaryPanel.setBackground(Color.decode("#171415"));
+        diaryPanel.setBackground(BG);
 
         JScrollPane scroll = new JScrollPane(diaryPanel);
         panel.add(scroll, BorderLayout.CENTER);
 
-        JButton addmovie = new JButton("Add movie");
-        addmovie.setForeground(Color.decode("#D6A36A"));
-        addmovie.setBackground(Color.decode("#A64B52"));
-        addmovie.addActionListener(e -> addMovieDialog());
+        JButton addMovie = new JButton("Add movie");
+        addMovie.setForeground(GOLD);
+        addMovie.setBackground(RED);
+        addMovie.addActionListener(e -> addMovieDialog());
 
-        panel.add(addmovie, BorderLayout.SOUTH);
+        panel.add(addMovie, BorderLayout.SOUTH);
         add(panel, BorderLayout.CENTER);
     }
 
     void createDiaryTable() {
         String sql = "CREATE TABLE IF NOT EXISTS diary_entries (" +
-                     "entry_id INT AUTO_INCREMENT PRIMARY KEY, " +
-                     "tmdb_id INT NOT NULL, " +
-                     "rating DECIMAL(3,1) NOT NULL, " +
-                     "watched_date VARCHAR(20) NOT NULL, " +
-                     "review TEXT, " +
-                     "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-                     "FOREIGN KEY (tmdb_id) REFERENCES movies_new(tmdb_id) " +
-                     "ON DELETE CASCADE)";
+                "entry_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "tmdb_id INT NOT NULL, " +
+                "rating DECIMAL(3,1) NOT NULL, " +
+                "watched_date VARCHAR(20) NOT NULL, " +
+                "review TEXT, " +
+                "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "FOREIGN KEY (tmdb_id) REFERENCES movies_new(tmdb_id) " +
+                "ON DELETE CASCADE)";
 
         try (Connection con = DatabaseManager.getConnection();
              Statement st = con.createStatement()) {
-
             st.executeUpdate(sql);
-
         } catch (Exception ex) {
-            ex.printStackTrace();
-            JOptionPane.showMessageDialog(
-                this, "Could not create diary table: " + ex.getMessage());
+            showError("Could not create diary table.", ex);
         }
     }
 
@@ -92,10 +91,10 @@ public class DiaryPage extends JPanel {
         diaryPanel.removeAll();
 
         String sql = "SELECT d.entry_id, m.tmdb_id, m.title, " +
-                     "d.rating, d.watched_date, d.review " +
-                     "FROM diary_entries d " +
-                     "JOIN movies_new m ON d.tmdb_id = m.tmdb_id " +
-                     "ORDER BY d.entry_id DESC";
+                "d.rating, d.watched_date, d.review " +
+                "FROM diary_entries d " +
+                "JOIN movies_new m ON d.tmdb_id = m.tmdb_id " +
+                "ORDER BY d.entry_id DESC";
 
         try (Connection con = DatabaseManager.getConnection();
              PreparedStatement ps = con.prepareStatement(sql);
@@ -103,19 +102,16 @@ public class DiaryPage extends JPanel {
 
             while (rs.next()) {
                 addToDiary(
-                    rs.getInt("entry_id"),
-                    rs.getInt("tmdb_id"),
-                    rs.getString("title"),
-                    rs.getString("rating"),
-                    rs.getString("watched_date"),
-                    rs.getString("review")
+                        rs.getInt("entry_id"),
+                        rs.getInt("tmdb_id"),
+                        rs.getString("title"),
+                        rs.getString("rating"),
+                        rs.getString("watched_date"),
+                        rs.getString("review")
                 );
             }
-
         } catch (Exception ex) {
-            ex.printStackTrace();
-            JOptionPane.showMessageDialog(
-                this, "Could not load diary: " + ex.getMessage());
+            showError("Could not load diary.", ex);
         }
 
         diaryPanel.revalidate();
@@ -123,99 +119,94 @@ public class DiaryPage extends JPanel {
     }
 
     void addMovieDialog() {
-        JPanel moviePanel = new JPanel(new GridLayout(4, 2, 10, 10));
+        JPanel moviePanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
 
-        JTextField nameField = new JTextField();
-        JTextField ratingField = new JTextField();
+        JTextField nameField = new JTextField(22);
+        JTextField ratingField = new JTextField(18);
+        JTextField dateField = new JTextField(12);
+        JTextField reviewField = new JTextField(18);
 
-        JTextField dateField = new JTextField();
         dateField.setEditable(false);
         dateField.setBackground(Color.WHITE);
 
         JButton calendarButton = new JButton("Calendar");
+        calendarButton.addActionListener(e -> showCalendar(dateField));
 
         JPanel datePanel = new JPanel(new BorderLayout(5, 0));
         datePanel.add(dateField, BorderLayout.CENTER);
         datePanel.add(calendarButton, BorderLayout.EAST);
 
-        calendarButton.addActionListener(e -> showCalendar(dateField));
+        DefaultListModel<Movie> suggestionModel = new DefaultListModel<>();
+        JList<Movie> suggestionList = new JList<>(suggestionModel);
+        suggestionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        suggestionList.setVisibleRowCount(5);
+        suggestionList.setFixedCellHeight(24);
 
-        JTextField reviewField = new JTextField();
+        JScrollPane suggestionScroll = new JScrollPane(suggestionList);
+        suggestionScroll.setPreferredSize(new Dimension(280, 120));
+        suggestionScroll.setVisible(false);
 
-        moviePanel.add(new JLabel("Movie name"));
-        moviePanel.add(nameField);
-        moviePanel.add(new JLabel("Rating (0-10)"));
-        moviePanel.add(ratingField);
-        moviePanel.add(new JLabel("Date watched"));
-        moviePanel.add(datePanel);
-        moviePanel.add(new JLabel("Review"));
-        moviePanel.add(reviewField);
+        JPanel namePanel = new JPanel();
+        namePanel.setLayout(new BoxLayout(namePanel, BoxLayout.Y_AXIS));
+        namePanel.add(nameField);
+        namePanel.add(suggestionScroll);
 
-        int[] movieId = {-1};
+        int[] selectedMovieId = {-1};
         boolean[] selecting = {false};
-
-        JPopupMenu suggestions = new JPopupMenu();
 
         nameField.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) {
-                search();
+                searchMovies();
             }
 
             public void removeUpdate(DocumentEvent e) {
-                search();
+                searchMovies();
             }
 
             public void changedUpdate(DocumentEvent e) {
-                search();
+                searchMovies();
             }
 
-            void search() {
+            void searchMovies() {
                 if (selecting[0]) {
                     return;
                 }
 
-                movieId[0] = -1;
-                suggestions.setVisible(false);
-                suggestions.removeAll();
+                selectedMovieId[0] = -1;
+                suggestionModel.clear();
+                suggestionScroll.setVisible(false);
 
                 String text = nameField.getText().trim();
 
                 if (text.isEmpty()) {
+                    namePanel.revalidate();
+                    namePanel.repaint();
                     return;
                 }
 
                 String sql = "SELECT tmdb_id, title FROM movies_new " +
-                             "WHERE title LIKE ? ORDER BY title LIMIT 10";
+                        "WHERE title LIKE ? ORDER BY title LIMIT 100";
 
                 try (Connection con = DatabaseManager.getConnection();
                      PreparedStatement ps = con.prepareStatement(sql)) {
 
-                    ps.setString(1, "%" + text + "%");
+                    ps.setString(1, text + "%");
 
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
-                            int id = rs.getInt("tmdb_id");
-                            String title = rs.getString("title");
-
-                            JMenuItem item = new JMenuItem(title);
-
-                            item.addActionListener(a -> {
-                                selecting[0] = true;
-                                movieId[0] = id;
-                                nameField.setText(title);
-                                selecting[0] = false;
-                                suggestions.setVisible(false);
-                            });
-
-                            suggestions.add(item);
+                            suggestionModel.addElement(
+                                    new Movie(rs.getInt("tmdb_id"),
+                                              rs.getString("title")));
                         }
                     }
 
-                    if (suggestions.getComponentCount() > 0
-                            && nameField.isShowing()) {
-                        suggestions.show(
-                            nameField, 0, nameField.getHeight());
-                    }
+                    suggestionScroll.setVisible(!suggestionModel.isEmpty());
+                    namePanel.revalidate();
+                    namePanel.repaint();
 
                 } catch (Exception ex) {
                     ex.printStackTrace();
@@ -223,17 +214,49 @@ public class DiaryPage extends JPanel {
             }
         });
 
-        int result = JOptionPane.showConfirmDialog(
-            this, moviePanel, "Add Movie",
-            JOptionPane.OK_CANCEL_OPTION);
+        suggestionList.addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) {
+                return;
+            }
 
-        if (result != JOptionPane.OK_OPTION) {
+            Movie selected = suggestionList.getSelectedValue();
+
+            if (selected != null) {
+                selecting[0] = true;
+                selectedMovieId[0] = selected.id;
+                nameField.setText(selected.title);
+                suggestionScroll.setVisible(false);
+                selecting[0] = false;
+            }
+        });
+
+        addField(moviePanel, gbc, 0, "Movie name", namePanel);
+        addField(moviePanel, gbc, 1, "Rating (0-10)", ratingField);
+        addField(moviePanel, gbc, 2, "Date watched", datePanel);
+        addField(moviePanel, gbc, 3, "Review", reviewField);
+
+        JOptionPane optionPane = new JOptionPane(
+                moviePanel,
+                JOptionPane.PLAIN_MESSAGE,
+                JOptionPane.OK_CANCEL_OPTION
+        );
+
+        JDialog dialog = optionPane.createDialog(this, "Add Movie");
+        dialog.setResizable(false);
+        dialog.setSize(460, 310);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+
+        Object choice = optionPane.getValue();
+
+        if (!(choice instanceof Integer)
+                || (Integer) choice != JOptionPane.OK_OPTION) {
             return;
         }
 
-        if (movieId[0] == -1) {
-            JOptionPane.showMessageDialog(
-                this, "Select a movie from the suggestions.");
+        if (selectedMovieId[0] == -1) {
+            JOptionPane.showMessageDialog(this,
+                    "Select a movie from the suggestions.");
             return;
         }
 
@@ -242,80 +265,79 @@ public class DiaryPage extends JPanel {
         String review = reviewField.getText().trim();
 
         if (rating.isEmpty() || date.isEmpty()) {
-            JOptionPane.showMessageDialog(
-                this, "Enter a rating and select a date.");
+            JOptionPane.showMessageDialog(this,
+                    "Enter a rating and select a date.");
             return;
         }
 
-        try {
-            double value = Double.parseDouble(rating);
+        double value;
 
+        try {
+            value = Double.parseDouble(rating);
             if (value < 0 || value > 10) {
-                JOptionPane.showMessageDialog(
-                    this, "Rating must be between 0 and 10.");
+                JOptionPane.showMessageDialog(this,
+                        "Rating must be between 0 and 10.");
                 return;
             }
-
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Enter a valid rating.");
             return;
         }
 
         String sql = "INSERT INTO diary_entries " +
-                     "(tmdb_id, rating, watched_date, review) " +
-                     "VALUES (?, ?, ?, ?)";
+                "(tmdb_id, rating, watched_date, review) VALUES (?, ?, ?, ?)";
 
         try (Connection con = DatabaseManager.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
-
-            ps.setInt(1, movieId[0]);
-            ps.setDouble(2, Double.parseDouble(rating));
+            ps.setInt(1, selectedMovieId[0]);
+            ps.setDouble(2, value);
             ps.setString(3, date);
             ps.setString(4, review);
             ps.executeUpdate();
-
             refreshDiary();
-
         } catch (Exception ex) {
-            ex.printStackTrace();
-            JOptionPane.showMessageDialog(
-                this, "Could not add movie: " + ex.getMessage());
+            showError("Could not add movie.", ex);
         }
     }
 
-    // Open calendar with month and year selectors
+    void addField(JPanel panel, GridBagConstraints gbc,
+                  int row, String label, JComponent field) {
+        gbc.gridy = row;
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        panel.add(new JLabel(label), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        panel.add(field, gbc);
+    }
+
     void showCalendar(JTextField dateField) {
         Window owner = SwingUtilities.getWindowAncestor(this);
 
         JDialog calendar = new JDialog(
-            owner instanceof Frame ? (Frame) owner : null,
-            "Select Date Watched",
-            true
-        );
+                owner instanceof Frame ? (Frame) owner : null,
+                "Select Date Watched", true);
 
         calendar.setSize(390, 400);
-        calendar.setMinimumSize(new Dimension(390, 400));
         calendar.setLocationRelativeTo(this);
         calendar.setLayout(new BorderLayout(5, 5));
 
         JPanel top = new JPanel(new BorderLayout(5, 5));
-        top.setBackground(Color.decode("#171415"));
+        top.setBackground(BG);
 
         JButton previous = new JButton("←");
         JButton next = new JButton("→");
-
         JLabel monthLabel = new JLabel("", JLabel.CENTER);
-        monthLabel.setForeground(Color.decode("#D6A36A"));
-        monthLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        monthLabel.setForeground(GOLD);
+        monthLabel.setFont(new Font("Arial", Font.BOLD, 17));
 
-        JButton yearButton = new JButton();
-        yearButton.setForeground(Color.decode("#D6A36A"));
-        yearButton.setBackground(Color.decode("#242021"));
-        yearButton.setFocusPainted(false);
-        yearButton.setMargin(new Insets(3, 8, 3, 8));
+        JButton yearButton = new JButton("Year ▾");
+        yearButton.setForeground(GOLD);
+        yearButton.setBackground(CARD);
 
         JPanel center = new JPanel(new BorderLayout(5, 0));
-        center.setBackground(Color.decode("#171415"));
+        center.setBackground(BG);
         center.add(monthLabel, BorderLayout.CENTER);
         center.add(yearButton, BorderLayout.EAST);
 
@@ -324,54 +346,29 @@ public class DiaryPage extends JPanel {
         top.add(next, BorderLayout.EAST);
 
         JPanel daysPanel = new JPanel(new GridLayout(7, 7, 3, 3));
-        daysPanel.setBackground(Color.decode("#171415"));
-        daysPanel.setBorder(
-            BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        daysPanel.setBackground(BG);
+        daysPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
         calendar.add(top, BorderLayout.NORTH);
         calendar.add(daysPanel, BorderLayout.CENTER);
 
         YearMonth[] currentMonth = {YearMonth.now()};
 
-        try {
-            if (!dateField.getText().isEmpty()) {
-                LocalDate selectedDate = LocalDate.parse(
-                    dateField.getText(),
-                    DateTimeFormatter.ofPattern("dd-MM-yyyy")
-                );
-
-                currentMonth[0] = YearMonth.from(selectedDate);
-            }
-        } catch (Exception ex) {
-            currentMonth[0] = YearMonth.now();
-        }
-
-        Runnable refresh = () -> {
-            yearButton.setText("Year ▾");
-
-            updateCalendar(
-                currentMonth[0],
-                monthLabel,
-                daysPanel,
-                calendar,
-                dateField
-            );
-        };
+        Runnable update = () -> updateCalendar(
+                currentMonth[0], monthLabel, daysPanel, dateField, calendar);
 
         previous.addActionListener(e -> {
             currentMonth[0] = currentMonth[0].minusMonths(1);
-            refresh.run();
+            update.run();
         });
 
         next.addActionListener(e -> {
             currentMonth[0] = currentMonth[0].plusMonths(1);
-            refresh.run();
+            update.run();
         });
 
         yearButton.addActionListener(e -> {
-            int currentYear = currentMonth[0].getYear();
             int thisYear = Year.now().getValue();
-
             Integer[] years = new Integer[101];
 
             for (int i = 0; i < years.length; i++) {
@@ -379,56 +376,40 @@ public class DiaryPage extends JPanel {
             }
 
             JComboBox<Integer> yearList = new JComboBox<>(years);
-            yearList.setSelectedItem(currentYear);
+            yearList.setSelectedItem(currentMonth[0].getYear());
 
             int result = JOptionPane.showConfirmDialog(
-                calendar,
-                yearList,
-                "Select Year",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE
-            );
+                    calendar, yearList, "Select Year",
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE);
 
             if (result == JOptionPane.OK_OPTION) {
-                Integer selectedYear =
-                    (Integer) yearList.getSelectedItem();
-
-                if (selectedYear != null) {
+                Integer year = (Integer) yearList.getSelectedItem();
+                if (year != null) {
                     currentMonth[0] = YearMonth.of(
-                        selectedYear,
-                        currentMonth[0].getMonth()
-                    );
-
-                    refresh.run();
+                            year, currentMonth[0].getMonth());
+                    update.run();
                 }
             }
         });
 
-        refresh.run();
+        update.run();
         calendar.setVisible(true);
     }
 
-    // Draw numbered dates in a seven-column calendar
-    void updateCalendar(
-            YearMonth month,
-            JLabel monthLabel,
-            JPanel daysPanel,
-            JDialog calendar,
-            JTextField dateField) {
-
-        monthLabel.setText(month.getMonth().toString());
-
+    void updateCalendar(YearMonth month, JLabel monthLabel,
+                        JPanel daysPanel, JTextField dateField,
+                        JDialog calendar) {
+        monthLabel.setText(month.getMonth().toString() + " " + month.getYear());
         daysPanel.removeAll();
-        daysPanel.setLayout(new GridLayout(7, 7, 3, 3));
 
         String[] weekdays = {
-            "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
+                "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
         };
 
         for (String day : weekdays) {
             JLabel label = new JLabel(day, JLabel.CENTER);
-            label.setForeground(Color.decode("#D6A36A"));
-            label.setFont(new Font("Arial", Font.BOLD, 13));
+            label.setForeground(GOLD);
             daysPanel.add(label);
         }
 
@@ -440,23 +421,17 @@ public class DiaryPage extends JPanel {
 
         for (int day = 1; day <= month.lengthOfMonth(); day++) {
             int selectedDay = day;
+            JButton button = new JButton(String.valueOf(day));
+            button.setBackground(RED);
+            button.setForeground(Color.WHITE);
 
-            JButton dayButton = new JButton(String.valueOf(day));
-            dayButton.setBackground(Color.decode("#A64B52"));
-            dayButton.setForeground(Color.WHITE);
-            dayButton.setMargin(new Insets(2, 2, 2, 2));
-
-            dayButton.addActionListener(e -> {
-                LocalDate selectedDate = month.atDay(selectedDay);
-
-                DateTimeFormatter formatter =
-                    DateTimeFormatter.ofPattern("dd-MM-yyyy");
-
-                dateField.setText(selectedDate.format(formatter));
+            button.addActionListener(e -> {
+                dateField.setText(month.atDay(selectedDay).format(
+                        DateTimeFormatter.ofPattern("dd-MM-yyyy")));
                 calendar.dispose();
             });
 
-            daysPanel.add(dayButton);
+            daysPanel.add(button);
         }
 
         while (daysPanel.getComponentCount() < 49) {
@@ -467,14 +442,11 @@ public class DiaryPage extends JPanel {
         daysPanel.repaint();
     }
 
-    void addToDiary(
-            int entryId, int id, String title,
-            String rating, String date, String review) {
-
+    void addToDiary(int entryId, int id, String title,
+                    String rating, String date, String review) {
         JPanel movie = new JPanel(new BorderLayout(10, 10));
-        movie.setBackground(Color.decode("#241E20"));
-        movie.setBorder(
-            BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        movie.setBackground(CARD);
+        movie.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         movie.setMaximumSize(new Dimension(650, 180));
         movie.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -486,7 +458,7 @@ public class DiaryPage extends JPanel {
         if (file.exists()) {
             ImageIcon icon = new ImageIcon(file.getAbsolutePath());
             Image image = icon.getImage().getScaledInstance(
-                100, 150, Image.SCALE_SMOOTH);
+                    100, 150, Image.SCALE_SMOOTH);
             poster.setIcon(new ImageIcon(image));
         } else {
             poster.setText("No Poster");
@@ -494,13 +466,12 @@ public class DiaryPage extends JPanel {
         }
 
         JPanel details = new JPanel(new GridLayout(4, 1));
-        details.setBackground(Color.decode("#241E20"));
+        details.setBackground(CARD);
 
         JLabel movieTitle = new JLabel(title);
-        movieTitle.setForeground(Color.decode("#D6A36A"));
+        movieTitle.setForeground(GOLD);
         movieTitle.setFont(new Font("Arial", Font.BOLD, 20));
         movieTitle.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
         movieTitle.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 main.showMovieDetails(id);
@@ -509,10 +480,8 @@ public class DiaryPage extends JPanel {
 
         JLabel movieRating = new JLabel("Rating: " + rating + "/10");
         movieRating.setForeground(Color.WHITE);
-
         JLabel movieDate = new JLabel("Watched: " + date);
         movieDate.setForeground(Color.WHITE);
-
         JLabel movieReview = new JLabel("Review: " + review);
         movieReview.setForeground(Color.WHITE);
 
@@ -526,33 +495,49 @@ public class DiaryPage extends JPanel {
 
         JButton removeButton = new JButton("Remove");
         removeButton.setForeground(Color.WHITE);
-        removeButton.setBackground(Color.decode("#A64B52"));
+        removeButton.setBackground(RED);
 
         removeButton.addActionListener(e -> {
             int answer = JOptionPane.showConfirmDialog(
-                this, "Remove this diary entry?",
-                "Confirm", JOptionPane.YES_NO_OPTION);
+                    this, "Remove this diary entry?",
+                    "Confirm", JOptionPane.YES_NO_OPTION);
 
             if (answer == JOptionPane.YES_OPTION) {
                 try (Connection con = DatabaseManager.getConnection();
                      PreparedStatement ps = con.prepareStatement(
-                         "DELETE FROM diary_entries WHERE entry_id = ?")) {
-
+                             "DELETE FROM diary_entries WHERE entry_id = ?")) {
                     ps.setInt(1, entryId);
                     ps.executeUpdate();
                     refreshDiary();
-
                 } catch (Exception ex) {
-                    ex.printStackTrace();
-                    JOptionPane.showMessageDialog(
-                        this, "Could not remove entry: " + ex.getMessage());
+                    showError("Could not remove entry.", ex);
                 }
             }
         });
 
         movie.add(removeButton, BorderLayout.SOUTH);
-
         diaryPanel.add(movie);
         diaryPanel.add(Box.createVerticalStrut(10));
+    }
+
+    void showError(String message, Exception ex) {
+        ex.printStackTrace();
+        JOptionPane.showMessageDialog(this,
+                message + "\n" + ex.getMessage(),
+                "Diary Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    static class Movie {
+        int id;
+        String title;
+
+        Movie(int id, String title) {
+            this.id = id;
+            this.title = title;
+        }
+
+        public String toString() {
+            return title;
+        }
     }
 }
