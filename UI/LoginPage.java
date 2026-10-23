@@ -1,7 +1,10 @@
+
 import javax.swing.*;
 import java.awt.*;
+import java.util.Arrays;
 
 public class LoginPage extends JPanel {
+
     public LoginPage(Main main) {
 
         setOpaque(false);
@@ -10,8 +13,8 @@ public class LoginPage extends JPanel {
         JPanel box = new JPanel();
         box.setBackground(Color.decode("#242021"));
         box.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-        box.setLayout(new GridLayout(6, 1, 5, 5));
-        box.setPreferredSize(new Dimension(300, 300));
+        box.setLayout(new GridLayout(7, 1, 5, 5));
+        box.setPreferredSize(new Dimension(300, 340));
 
         JLabel title = new JLabel("70mm", SwingConstants.CENTER);
         title.setFont(new Font("Impact", Font.BOLD, 48));
@@ -19,7 +22,6 @@ public class LoginPage extends JPanel {
 
         JLabel usernameLabel = new JLabel("Username");
         usernameLabel.setForeground(Color.decode("#F1E9DD"));
-
 
         JLabel passwordLabel = new JLabel("Password");
         passwordLabel.setForeground(Color.decode("#F1E9DD"));
@@ -31,31 +33,78 @@ public class LoginPage extends JPanel {
         loginButton.setForeground(Color.decode("#F1E9DD"));
         loginButton.setBackground(Color.decode("#A64B52"));
 
+        JButton createButton = new JButton("Create Account");
+        createButton.setForeground(Color.decode("#F1E9DD"));
+        createButton.setBackground(Color.decode("#A64B52"));
+
         box.add(title);
         box.add(usernameLabel);
         box.add(username);
         box.add(passwordLabel);
         box.add(password);
         box.add(loginButton);
+        box.add(createButton);
 
         JPanel outside = new JPanel(new BorderLayout());
         outside.setOpaque(false);
-
         outside.add(box, BorderLayout.CENTER);
-        
 
         add(outside);
 
+        // Open the account creation window
+        createButton.addActionListener(e -> {
+            new CreateAccountDialog(main).setVisible(true);
+        });
+
+        // Login using the saved account
         loginButton.addActionListener(e -> {
-    main.setUsername(username.getText().trim());
-    main.showPage("home");
-     });
-    
+
+            String name = username.getText().trim();
+            char[] pass = password.getPassword();
+
+            if (name.isEmpty() || pass.length == 0) {
+                JOptionPane.showMessageDialog(
+                    this, "Enter your username and password.");
+
+                Arrays.fill(pass, '\0');
+                return;
+            }
+
+            try {
+                boolean valid = UserDatabase.login(name, pass);
+
+                if (valid) {
+                    main.setUsername(name);
+                    main.showPage("home");
+                } else {
+                    JOptionPane.showMessageDialog(
+                        this, "Incorrect username or password.");
+                }
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Login failed. Check your MySQL connection.\n"
+                    + ex.getMessage());
+            } finally {
+                Arrays.fill(pass, '\0');
+                password.setText("");
+            }
+        });
     }
+
     @Override
     protected void paintComponent(Graphics g) {
-    super.paintComponent(g);
-    ImageIcon img = new ImageIcon("UI/bgreel.png");
-    g.drawImage(img.getImage(), 0, 0, getWidth(), getHeight(), this);
-}
+        super.paintComponent(g);
+
+        ImageIcon img = new ImageIcon("UI/bgreel.png");
+
+        g.drawImage(
+            img.getImage(),
+            0, 0,
+            getWidth(), getHeight(),
+            this);
+    }
 }
