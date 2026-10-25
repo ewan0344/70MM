@@ -20,7 +20,6 @@ public class ProfilePage extends JPanel {
         setBackground(BG);
         setLayout(new BorderLayout());
 
-        // Top panel
         JPanel top = new JPanel(new BorderLayout());
         top.setBackground(BG);
         top.setBorder(BorderFactory.createLineBorder(GOLD));
@@ -42,65 +41,82 @@ public class ProfilePage extends JPanel {
         top.add(title, BorderLayout.CENTER);
         top.add(logo, BorderLayout.EAST);
 
-        // Profile information
-        JPanel info = new JPanel(new GridLayout(3, 1));
+        JPanel info = new JPanel(new GridLayout(2, 1));
         info.setBackground(BG);
 
-        JLabel username = new JLabel(main.currentUsername, SwingConstants.CENTER);
+        JLabel username = new JLabel(
+            main.currentUsername, SwingConstants.CENTER
+        );
         username.setForeground(TEXT);
         username.setFont(new Font("Arial", Font.BOLD, 20));
 
         JLabel activity = new JLabel(
-            "Recently Watched", SwingConstants.CENTER);
+            "Recently Watched", SwingConstants.CENTER
+        );
         activity.setForeground(GOLD);
         activity.setFont(new Font("Arial", Font.BOLD, 18));
 
-        
         info.add(username);
         info.add(activity);
 
-        // Last four diary movies
         recentMovies = new JPanel(new GridLayout(1, 4, 10, 10));
         recentMovies.setBackground(BG);
         recentMovies.setBorder(
-            BorderFactory.createEmptyBorder(5, 15, 10, 15));
+            BorderFactory.createEmptyBorder(5, 15, 10, 15)
+        );
 
         JPanel center = new JPanel(new BorderLayout());
         center.setBackground(BG);
         center.add(info, BorderLayout.NORTH);
         center.add(recentMovies, BorderLayout.CENTER);
 
-        // Navigation buttons
-        JPanel options = new JPanel(new GridLayout(1, 3, 10, 10));
+        // Five navigation buttons.
+        JPanel options = new JPanel(new GridLayout(1, 5, 8, 10));
         options.setBackground(BG);
         options.setBorder(
-            BorderFactory.createEmptyBorder(10, 30, 20, 30));
+            BorderFactory.createEmptyBorder(10, 10, 20, 10)
+        );
 
         JButton diary = new JButton("Diary");
         JButton watchlist = new JButton("Watchlist");
         JButton list = new JButton("List");
+        JButton friends = new JButton("Friends");
+        JButton favourites = new JButton("Favourites");
 
-        for (JButton button : new JButton[]{diary, watchlist, list}) {
+        for (JButton button : new JButton[]{
+                diary, watchlist, list, friends, favourites}) {
+
             button.setBackground(ACCENT);
             button.setForeground(TEXT);
+            button.setFocusPainted(false);
+            button.setMargin(new Insets(5, 2, 5, 2));
         }
 
         diary.addActionListener(e -> main.showPage("diary"));
         watchlist.addActionListener(e -> main.showPage("watchlist"));
         list.addActionListener(e -> main.showPage("list"));
+        friends.addActionListener(e -> main.openFriendsWindow());
+
+        // Open the Favourites page.
+        favourites.addActionListener(
+            e -> main.showPage("favourites")
+        );
 
         options.add(diary);
         options.add(watchlist);
         options.add(list);
+        options.add(friends);
+        options.add(favourites);
 
         add(top, BorderLayout.NORTH);
         add(center, BorderLayout.CENTER);
         add(options, BorderLayout.SOUTH);
 
-        // Refresh whenever Profile is opened again
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
-            public void componentShown(java.awt.event.ComponentEvent e) {
+            public void componentShown(
+                    java.awt.event.ComponentEvent e) {
+                username.setText(main.currentUsername);
                 loadRecentMovies();
             }
         });
@@ -125,7 +141,7 @@ public class ProfilePage extends JPanel {
 
             while (rs.next()) {
                 int id = rs.getInt("tmdb_id");
-                String title = rs.getString("title");
+                String movieTitle = rs.getString("title");
                 String rating = rs.getString("rating");
 
                 JPanel card = new JPanel(new BorderLayout(5, 5));
@@ -139,7 +155,8 @@ public class ProfilePage extends JPanel {
                 if (file.exists()) {
                     ImageIcon icon = new ImageIcon(file.getAbsolutePath());
                     Image image = icon.getImage().getScaledInstance(
-                        110, 145, Image.SCALE_SMOOTH);
+                        110, 145, Image.SCALE_SMOOTH
+                    );
                     poster.setIcon(new ImageIcon(image));
                 } else {
                     poster.setText("No Poster");
@@ -147,20 +164,23 @@ public class ProfilePage extends JPanel {
                 }
 
                 JLabel name = new JLabel(
-                    "<html><center>" + escapeHtml(title) +
-                    "</center></html>", SwingConstants.CENTER);
+                    "<html><center>" + escapeHtml(movieTitle) +
+                    "</center></html>", SwingConstants.CENTER
+                );
                 name.setForeground(GOLD);
                 name.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
                 name.addMouseListener(new java.awt.event.MouseAdapter() {
                     @Override
-                    public void mouseClicked(java.awt.event.MouseEvent e) {
+                    public void mouseClicked(
+                            java.awt.event.MouseEvent e) {
                         main.showMovieDetails(id);
                     }
                 });
 
                 JLabel score = new JLabel(
-                    "★ " + rating + "/10", SwingConstants.CENTER);
+                    "★ " + rating + "/10", SwingConstants.CENTER
+                );
                 score.setForeground(TEXT);
 
                 card.add(poster, BorderLayout.NORTH);
@@ -173,7 +193,8 @@ public class ProfilePage extends JPanel {
 
             if (count == 0) {
                 JLabel empty = new JLabel(
-                    "No movies watched yet", SwingConstants.CENTER);
+                    "No movies watched yet", SwingConstants.CENTER
+                );
                 empty.setForeground(TEXT);
                 recentMovies.add(empty);
             }
@@ -182,7 +203,8 @@ public class ProfilePage extends JPanel {
             ex.printStackTrace();
 
             JLabel error = new JLabel(
-                "Could not load recent movies", SwingConstants.CENTER);
+                "Could not load recent movies", SwingConstants.CENTER
+            );
             error.setForeground(TEXT);
             recentMovies.add(error);
         }

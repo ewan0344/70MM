@@ -20,6 +20,7 @@ public class Main extends JFrame {
         mainPanel.add(new HomePage(this), "home");
         mainPanel.add(new ProfilePage(this), "profile");
         mainPanel.add(new DiaryPage(this), "diary");
+        mainPanel.add(new FavouritesPage(this), "favourites");
         mainPanel.add(new PosterTestPage(this), "posterTest");
         mainPanel.add(new WatchlistPage(this), "watchlist");
         mainPanel.add(new ListPage(this), "list");
@@ -36,6 +37,7 @@ public class Main extends JFrame {
         showPage("login");
     }
 
+    // Store the logged-in username.
     public void setUsername(String username) {
         currentUsername = username;
     }
@@ -44,6 +46,7 @@ public class Main extends JFrame {
         return currentUsername;
     }
 
+    // Navigate between application pages.
     public void showPage(String pageName) {
 
         if ("watchlist".equals(pageName)) {
@@ -54,6 +57,16 @@ public class Main extends JFrame {
             }
 
             mainPanel.add(new WatchlistPage(this), "watchlist");
+        }
+
+        if ("favourites".equals(pageName)) {
+            Component oldPage = getPageComponent("favourites");
+
+            if (oldPage != null) {
+                mainPanel.remove(oldPage);
+            }
+
+            mainPanel.add(new FavouritesPage(this), "favourites");
         }
 
         if ("admin".equals(pageName)) {
@@ -70,15 +83,25 @@ public class Main extends JFrame {
         mainPanel.repaint();
     }
 
+    // Find an existing page by its type.
     private Component getPageComponent(String pageName) {
         for (Component component : mainPanel.getComponents()) {
-            if (component instanceof WatchlistPage) {
+
+            if ("watchlist".equals(pageName)
+                    && component instanceof WatchlistPage) {
+                return component;
+            }
+
+            if ("favourites".equals(pageName)
+                    && component instanceof FavouritesPage) {
                 return component;
             }
         }
+
         return null;
     }
 
+    // Open a movie's details page.
     public void showMovieDetails(int movieId) {
 
         for (Component component : mainPanel.getComponents()) {
@@ -96,6 +119,21 @@ public class Main extends JFrame {
         cardLayout.show(mainPanel, pageName);
         mainPanel.revalidate();
         mainPanel.repaint();
+    }
+
+    // Open the Friends window.
+    public void openFriendsWindow() {
+        try {
+            UserDatabase.setup();
+            new FriendsPage(currentUsername);
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Could not open Friends: " + ex.getMessage()
+            );
+            ex.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
