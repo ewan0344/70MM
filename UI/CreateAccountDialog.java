@@ -2,6 +2,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.util.Arrays;
+import java.sql.SQLException;
 
 public class CreateAccountDialog extends JDialog {
 
@@ -51,34 +52,41 @@ public class CreateAccountDialog extends JDialog {
         add(box);
 
         createButton.addActionListener(e -> {
+
             String name = username.getText().trim();
             char[] pass = password.getPassword();
 
-            if (name.isEmpty() || pass.length == 0) {
-                JOptionPane.showMessageDialog(
-                    this, "Enter a username and password."
-                );
-                Arrays.fill(pass, '\0');
-                return;
-            }
-
-            if (name.length() < 3 || name.length() > 50) {
-                JOptionPane.showMessageDialog(
-                    this, "Username must be 3 to 50 characters."
-                );
-                Arrays.fill(pass, '\0');
-                return;
-            }
-
-            if (pass.length < 8) {
-                JOptionPane.showMessageDialog(
-                    this, "Password must be at least 8 characters."
-                );
-                Arrays.fill(pass, '\0');
-                return;
-            }
-
             try {
+                if (name.isEmpty() || pass.length == 0) {
+                    JOptionPane.showMessageDialog(
+                        this, "Enter a username and password."
+                    );
+                    return;
+                }
+
+                if (name.length() < 3 || name.length() > 50) {
+                    JOptionPane.showMessageDialog(
+                        this, "Username must be 3 to 50 characters."
+                    );
+                    return;
+                }
+
+                // Reserve admin, regardless of letter case.
+                if (name.equalsIgnoreCase("admin")) {
+                    JOptionPane.showMessageDialog(
+                        this,
+                        "The username 'admin' is reserved. Choose another."
+                    );
+                    return;
+                }
+
+                if (pass.length < 8) {
+                    JOptionPane.showMessageDialog(
+                        this, "Password must be at least 8 characters."
+                    );
+                    return;
+                }
+
                 UserDatabase.createUser(name, pass);
 
                 JOptionPane.showMessageDialog(
@@ -87,15 +95,24 @@ public class CreateAccountDialog extends JDialog {
 
                 dispose();
 
-            } catch (java.sql.SQLIntegrityConstraintViolationException ex) {
-                JOptionPane.showMessageDialog(
-                    this, "Username already exists. Choose another."
-                );
+            } catch (SQLException ex) {
+                if (ex.getErrorCode() == 1062) {
+                    JOptionPane.showMessageDialog(
+                        this, "Username already exists. Choose another."
+                    );
+                } else {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(
+                        this, "Could not create account:\n"
+                        + ex.getMessage()
+                    );
+                }
 
             } catch (Exception ex) {
                 ex.printStackTrace();
                 JOptionPane.showMessageDialog(
-                    this, "Could not create account:\n" + ex.getMessage()
+                    this, "Could not create account:\n"
+                    + ex.getMessage()
                 );
 
             } finally {

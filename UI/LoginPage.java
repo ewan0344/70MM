@@ -5,6 +5,9 @@ import java.util.Arrays;
 
 public class LoginPage extends JPanel {
 
+    private static final String ADMIN_USERNAME = "admin";
+    private static final String ADMIN_PASSWORD = "42";
+
     public LoginPage(Main main) {
 
         setOpaque(false);
@@ -48,37 +51,50 @@ public class LoginPage extends JPanel {
         JPanel outside = new JPanel(new BorderLayout());
         outside.setOpaque(false);
         outside.add(box, BorderLayout.CENTER);
-
         add(outside);
 
-        // Open the account creation window
-        createButton.addActionListener(e -> {
-            new CreateAccountDialog(main).setVisible(true);
-        });
+        createButton.addActionListener(e ->
+            new CreateAccountDialog(main).setVisible(true)
+        );
 
-        // Login using the saved account
         loginButton.addActionListener(e -> {
 
             String name = username.getText().trim();
             char[] pass = password.getPassword();
 
-            if (name.isEmpty() || pass.length == 0) {
-                JOptionPane.showMessageDialog(
-                    this, "Enter your username and password.");
-
-                Arrays.fill(pass, '\0');
-                return;
-            }
-
             try {
-                boolean valid = UserDatabase.login(name, pass);
+                if (name.isEmpty() || pass.length == 0) {
+                    JOptionPane.showMessageDialog(
+                        this, "Enter your username and password."
+                    );
+                    return;
+                }
 
-                if (valid) {
+                // Admin login is checked before normal-user login.
+                if (name.equalsIgnoreCase(ADMIN_USERNAME)) {
+
+                    String enteredPassword = new String(pass);
+
+                    if (ADMIN_PASSWORD.equals(enteredPassword)) {
+                        main.setUsername(ADMIN_USERNAME);
+                        main.showPage("admin");
+                    } else {
+                        JOptionPane.showMessageDialog(
+                            this, "Incorrect admin password."
+                        );
+                    }
+
+                    return;
+                }
+
+                // Normal users continue using the database.
+                if (UserDatabase.login(name, pass)) {
                     main.setUsername(name);
                     main.showPage("home");
                 } else {
                     JOptionPane.showMessageDialog(
-                        this, "Incorrect username or password.");
+                        this, "Incorrect username or password."
+                    );
                 }
 
             } catch (Exception ex) {
@@ -87,7 +103,9 @@ public class LoginPage extends JPanel {
                 JOptionPane.showMessageDialog(
                     this,
                     "Login failed. Check your MySQL connection.\n"
-                    + ex.getMessage());
+                    + ex.getMessage()
+                );
+
             } finally {
                 Arrays.fill(pass, '\0');
                 password.setText("");
@@ -103,8 +121,7 @@ public class LoginPage extends JPanel {
 
         g.drawImage(
             img.getImage(),
-            0, 0,
-            getWidth(), getHeight(),
-            this);
+            0, 0, getWidth(), getHeight(), this
+        );
     }
 }

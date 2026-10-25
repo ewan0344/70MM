@@ -1,3 +1,4 @@
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -6,7 +7,6 @@ public class Main extends JFrame {
     CardLayout cardLayout;
     JPanel mainPanel;
 
-    // Stores the username entered on the login page
     String currentUsername = "Username";
 
     public Main() {
@@ -23,6 +23,7 @@ public class Main extends JFrame {
         mainPanel.add(new PosterTestPage(this), "posterTest");
         mainPanel.add(new WatchlistPage(this), "watchlist");
         mainPanel.add(new ListPage(this), "list");
+        mainPanel.add(new AdminDashboard(this), "admin");
 
         add(mainPanel);
 
@@ -35,18 +36,33 @@ public class Main extends JFrame {
         showPage("login");
     }
 
-    // Save the username entered by the user
     public void setUsername(String username) {
         currentUsername = username;
+    }
+
+    public String getUsername() {
+        return currentUsername;
     }
 
     public void showPage(String pageName) {
 
         if ("watchlist".equals(pageName)) {
-            mainPanel.remove(getWatchlistPage());
+            Component oldPage = getPageComponent("watchlist");
 
-            WatchlistPage watchlist = new WatchlistPage(this);
-            mainPanel.add(watchlist, "watchlist");
+            if (oldPage != null) {
+                mainPanel.remove(oldPage);
+            }
+
+            mainPanel.add(new WatchlistPage(this), "watchlist");
+        }
+
+        if ("admin".equals(pageName)) {
+            for (Component component : mainPanel.getComponents()) {
+                if (component instanceof AdminDashboard) {
+                    ((AdminDashboard) component).refreshStats();
+                    break;
+                }
+            }
         }
 
         cardLayout.show(mainPanel, pageName);
@@ -54,40 +70,38 @@ public class Main extends JFrame {
         mainPanel.repaint();
     }
 
-    private Component getWatchlistPage() {
+    private Component getPageComponent(String pageName) {
         for (Component component : mainPanel.getComponents()) {
             if (component instanceof WatchlistPage) {
                 return component;
             }
         }
-
-        return new JPanel();
+        return null;
     }
 
     public void showMovieDetails(int movieId) {
 
-        // Remove any old movie-details page
         for (Component component : mainPanel.getComponents()) {
             if (component instanceof MovieDetailsPage) {
                 mainPanel.remove(component);
+                break;
             }
         }
 
-        // Create a page for the selected movie
         String pageName = "movieDetails";
 
         MovieDetailsPage page = new MovieDetailsPage(this, movieId);
         mainPanel.add(page, pageName);
 
         cardLayout.show(mainPanel, pageName);
-
         mainPanel.revalidate();
         mainPanel.repaint();
     }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            new Main().setVisible(true);
+            Main app = new Main();
+            app.setVisible(true);
         });
     }
 }
