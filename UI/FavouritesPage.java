@@ -25,8 +25,7 @@ public class FavouritesPage extends JPanel {
         top.setBackground(BG);
 
         JButton back = new JButton("← Back");
-        back.setBackground(RED);
-        back.setForeground(TEXT);
+        styleButton(back);
         back.addActionListener(e -> main.showPage("profile"));
 
         JLabel title = new JLabel("My Favourites", SwingConstants.CENTER);
@@ -34,6 +33,7 @@ public class FavouritesPage extends JPanel {
         title.setFont(new Font("Arial", Font.BOLD, 26));
 
         JButton refresh = new JButton("Refresh");
+        styleButton(refresh);
         refresh.addActionListener(e -> loadMovies());
 
         top.add(back, BorderLayout.WEST);
@@ -48,26 +48,47 @@ public class FavouritesPage extends JPanel {
 
         JScrollPane scroll = new JScrollPane(moviesPanel);
         scroll.getViewport().setBackground(BG);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
 
         add(top, BorderLayout.NORTH);
         add(scroll, BorderLayout.CENTER);
 
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(
+                    java.awt.event.ComponentEvent e) {
+                loadMovies();
+            }
+        });
+
         loadMovies();
+    }
+
+    private void styleButton(JButton button) {
+        button.setBackground(RED);
+        button.setForeground(TEXT);
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
 
     private void loadMovies() {
         moviesPanel.removeAll();
 
+        // Load only movies explicitly saved as favourites.
+        // The most recent diary rating is displayed when available.
         String sql =
-            "SELECT m.tmdb_id, m.title, d.rating, " +
-            "CASE WHEN f.tmdb_id IS NULL THEN 0 ELSE 1 END AS is_favourite " +
-            "FROM diary_entries d " +
-            "JOIN movies_new m ON m.tmdb_id = d.tmdb_id " +
-            "JOIN mm70_users.users u ON u.username = ? " +
-            "LEFT JOIN mm70_users.user_favourites f " +
-            "ON f.user_id = u.user_id AND f.tmdb_id = m.tmdb_id " +
-            "WHERE d.user_id = u.user_id " +
-            "ORDER BY d.entry_id DESC";
+            "SELECT m.tmdb_id, m.title, " +
+            "(SELECT d.rating FROM diary_entries d " +
+            " JOIN mm70_users.users du ON du.user_id = d.user_id " +
+            " WHERE du.user_id = u.user_id " +
+            " AND d.tmdb_id = m.tmdb_id " +
+            " ORDER BY d.entry_id DESC LIMIT 1) AS rating " +
+            "FROM mm70_users.user_favourites f " +
+            "JOIN mm70_users.users u ON u.user_id = f.user_id " +
+            "JOIN movies_new m ON m.tmdb_id = f.tmdb_id " +
+            "WHERE u.username = ? " +
+            "ORDER BY f.created_at DESC";
 
         try (Connection con = DatabaseManager.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -81,7 +102,6 @@ public class FavouritesPage extends JPanel {
                     int id = rs.getInt("tmdb_id");
                     String movieTitle = rs.getString("title");
                     String rating = rs.getString("rating");
-                    boolean favourite = rs.getInt("is_favourite") == 1;
 
                     JPanel card = new JPanel(new BorderLayout(5, 5));
                     card.setBackground(CARD);
@@ -90,15 +110,19 @@ public class FavouritesPage extends JPanel {
                     );
 
                     JLabel poster = new JLabel("", SwingConstants.CENTER);
-                    poster.setPreferredSize(new Dimension(130, 170));
+                    poster.setPreferredSize(new Dimension(180, 200));
 
                     File file = new File("posters/" + id + ".jpg");
 
                     if (file.exists()) {
-                        ImageIcon icon = new ImageIcon(file.getAbsolutePath());
-                        Image image = icon.getImage().getScaledInstance(
-                            120, 160, Image.SCALE_SMOOTH
+                        ImageIcon icon = new ImageIcon(
+                            file.getAbsolutePath()
                         );
+
+                        Image image = icon.getImage().getScaledInstance(
+                            150, 200, Image.SCALE_SMOOTH
+                        );
+
                         poster.setIcon(new ImageIcon(image));
                     } else {
                         poster.setText("No Poster");
@@ -111,30 +135,41 @@ public class FavouritesPage extends JPanel {
                         SwingConstants.CENTER
                     );
                     name.setForeground(GOLD);
+                    name.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+                    name.addMouseListener(
+                        new java.awt.event.MouseAdapter() {
+                            @Override
+                            public void mouseClicked(
+                                    java.awt.event.MouseEvent e) {
+                                main.showMovieDetails(id);
+                            }
+                        }
+                    );
 
                     JLabel score = new JLabel(
-                        "Rating: " + rating + "/10",
+                        rating == null
+                            ? "Not rated in Diary"
+                            : "Rating: " + rating + "/10",
                         SwingConstants.CENTER
                     );
                     score.setForeground(TEXT);
 
-                    JButton favouriteButton = new JButton(
-                        favourite ? "♥ Remove Favourite" : "♡ Add Favourite"
-                    );
-                    favouriteButton.setBackground(RED);
-                    favouriteButton.setForeground(TEXT);
-                    favouriteButton.setFocusPainted(false);
+                    JButton removeButton =
+                        new JButton("♥ Remove Favourite");
+                    styleButton(removeButton);
 
-                    favouriteButton.addActionListener(e -> {
-                        changeFavourite(id, !favourite);
-                        loadMovies();
+                    removeButton.addActionListener(e -> {
+                        removeFavourite(id);
                     });
 
-                    JPanel details = new JPanel(new GridLayout(3, 1, 4, 4));
+                    JPanel details = new JPanel(
+                        new GridLayout(3, 1, 5, 5)
+                    );
                     details.setBackground(CARD);
                     details.add(name);
                     details.add(score);
-                    details.add(favouriteButton);
+                    details.add(removeButton);
 
                     card.add(poster, BorderLayout.CENTER);
                     card.add(details, BorderLayout.SOUTH);
@@ -145,8 +180,8 @@ public class FavouritesPage extends JPanel {
 
                 if (count == 0) {
                     JLabel empty = new JLabel(
-                        "<html><center>No diary movies found.<br>" +
-                        "Add movies to your diary first.</center></html>",
+                        "<html><center>You haven't added any favourites yet.<br>" +
+                        "Open your Diary and press ♡ Add Favourite below a movie.</center></html>",
                         SwingConstants.CENTER
                     );
                     empty.setForeground(TEXT);
@@ -158,7 +193,8 @@ public class FavouritesPage extends JPanel {
             ex.printStackTrace();
 
             JLabel error = new JLabel(
-                "Could not load favourites: " + ex.getMessage(),
+                "<html><center>Could not load favourites.<br>" +
+                escapeHtml(ex.getMessage()) + "</center></html>",
                 SwingConstants.CENTER
             );
             error.setForeground(TEXT);
@@ -169,49 +205,34 @@ public class FavouritesPage extends JPanel {
         moviesPanel.repaint();
     }
 
-    private void changeFavourite(int movieId, boolean add) {
-        String sql;
-
-        if (add) {
-            sql =
-                "INSERT INTO mm70_users.user_favourites (user_id, tmdb_id) " +
-                "SELECT user_id, ? FROM mm70_users.users WHERE username = ? " +
-                "AND EXISTS (" +
-                "SELECT 1 FROM diary_entries d " +
-                "WHERE d.tmdb_id = ? AND d.user_id = user_id" +
-                ") " +
-                "ON DUPLICATE KEY UPDATE tmdb_id = VALUES(tmdb_id)";
-        } else {
-            sql =
-                "DELETE f FROM mm70_users.user_favourites f " +
-                "JOIN mm70_users.users u ON u.user_id = f.user_id " +
-                "WHERE u.username = ? AND f.tmdb_id = ? " +
-                "AND EXISTS (" +
-                "SELECT 1 FROM diary_entries d " +
-                "WHERE d.tmdb_id = f.tmdb_id AND d.user_id = u.user_id" +
-                ")";
-        }
+    private void removeFavourite(int movieId) {
+        String sql =
+            "DELETE f FROM mm70_users.user_favourites f " +
+            "JOIN mm70_users.users u ON u.user_id = f.user_id " +
+            "WHERE u.username = ? AND f.tmdb_id = ?";
 
         try (Connection con = DatabaseManager.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            if (add) {
-                ps.setInt(1, movieId);
-                ps.setString(2, main.getUsername());
-                ps.setInt(3, movieId);
-            } else {
-                ps.setString(1, main.getUsername());
-                ps.setInt(2, movieId);
-            }
+            ps.setString(1, main.getUsername());
+            ps.setInt(2, movieId);
 
-            ps.executeUpdate();
+            int deleted = ps.executeUpdate();
+
+            if (deleted > 0) {
+                loadMovies();
+            } else {
+                JOptionPane.showMessageDialog(
+                    this, "Favourite was not found."
+                );
+            }
 
         } catch (Exception ex) {
             ex.printStackTrace();
 
             JOptionPane.showMessageDialog(
                 this,
-                "Could not update favourite:\n" + ex.getMessage()
+                "Could not remove favourite:\n" + ex.getMessage()
             );
         }
     }
