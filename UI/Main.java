@@ -1,16 +1,13 @@
-
 import javax.swing.*;
 import java.awt.*;
 
 public class Main extends JFrame {
 
-    CardLayout cardLayout;
-    JPanel mainPanel;
-
-    String currentUsername = "Username";
+    private final CardLayout cardLayout;
+    private final JPanel mainPanel;
+    private String currentUsername = "Username";
 
     public Main() {
-
         DatabaseSetup.initialize();
 
         cardLayout = new CardLayout();
@@ -27,52 +24,30 @@ public class Main extends JFrame {
         mainPanel.add(new AdminDashboard(this), "admin");
 
         add(mainPanel);
-
         setTitle("70mm");
         setSize(700, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
-
         showPage("login");
     }
 
-    // Store the logged-in username.
     public void setUsername(String username) {
-        currentUsername = username;
+        if (username != null && !username.trim().isEmpty()) {
+            currentUsername = username.trim();
+        }
     }
 
     public String getUsername() {
         return currentUsername;
     }
 
-    // Navigate between application pages.
     public void showPage(String pageName) {
-
-        // Recreate Watchlist so it refreshes when opened.
         if ("watchlist".equals(pageName)) {
-            Component oldPage = getPageComponent("watchlist");
-
-            if (oldPage != null) {
-                mainPanel.remove(oldPage);
-            }
-
-            mainPanel.add(new WatchlistPage(this), "watchlist");
-        }
-
-        // Recreate Favourites so it refreshes when opened.
-        if ("favourites".equals(pageName)) {
-            Component oldPage = getPageComponent("favourites");
-
-            if (oldPage != null) {
-                mainPanel.remove(oldPage);
-            }
-
-            mainPanel.add(new FavouritesPage(this), "favourites");
-        }
-
-        // Refresh admin statistics when opening the admin page.
-        if ("admin".equals(pageName)) {
+            replacePage("watchlist", new WatchlistPage(this));
+        } else if ("favourites".equals(pageName)) {
+            replacePage("favourites", new FavouritesPage(this));
+        } else if ("admin".equals(pageName)) {
             for (Component component : mainPanel.getComponents()) {
                 if (component instanceof AdminDashboard) {
                     ((AdminDashboard) component).refreshStats();
@@ -86,28 +61,21 @@ public class Main extends JFrame {
         mainPanel.repaint();
     }
 
-    // Find an existing Watchlist or Favourites page.
+    private void replacePage(String pageName, Component newPage) {
+        Component oldPage = getPageComponent(pageName);
+        if (oldPage != null) mainPanel.remove(oldPage);
+        mainPanel.add(newPage, pageName);
+    }
+
     private Component getPageComponent(String pageName) {
-
         for (Component component : mainPanel.getComponents()) {
-
-            if ("watchlist".equals(pageName)
-                    && component instanceof WatchlistPage) {
-                return component;
-            }
-
-            if ("favourites".equals(pageName)
-                    && component instanceof FavouritesPage) {
-                return component;
-            }
+            if ("watchlist".equals(pageName) && component instanceof WatchlistPage) return component;
+            if ("favourites".equals(pageName) && component instanceof FavouritesPage) return component;
         }
-
         return null;
     }
 
-    // Open a movie's details page.
     public void showMovieDetails(int movieId) {
-
         for (Component component : mainPanel.getComponents()) {
             if (component instanceof MovieDetailsPage) {
                 mainPanel.remove(component);
@@ -115,35 +83,31 @@ public class Main extends JFrame {
             }
         }
 
-        String pageName = "movieDetails";
-
-        MovieDetailsPage page = new MovieDetailsPage(this, movieId);
-        mainPanel.add(page, pageName);
-
-        cardLayout.show(mainPanel, pageName);
+        mainPanel.add(new MovieDetailsPage(this, movieId), "movieDetails");
+        cardLayout.show(mainPanel, "movieDetails");
         mainPanel.revalidate();
         mainPanel.repaint();
     }
 
-    // Open Friends using this Main instance and logged-in username.
     public void openFriendsWindow() {
+        if (currentUsername == null || currentUsername.trim().isEmpty()
+                || "Username".equals(currentUsername)) {
+            JOptionPane.showMessageDialog(this, "Please log in before opening Friends.");
+            return;
+        }
 
         try {
             UserDatabase.setup();
             new FriendsPage(this, currentUsername);
-
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(
-                this,
-                "Could not open Friends: " + ex.getMessage()
-            );
-
             ex.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "Could not open Friends:\n" + ex.getMessage(),
+                    "Friends Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     public static void main(String[] args) {
-
         SwingUtilities.invokeLater(() -> {
             Main app = new Main();
             app.setVisible(true);
