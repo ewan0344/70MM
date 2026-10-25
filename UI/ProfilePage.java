@@ -96,11 +96,7 @@ public class ProfilePage extends JPanel {
         watchlist.addActionListener(e -> main.showPage("watchlist"));
         list.addActionListener(e -> main.showPage("list"));
         friends.addActionListener(e -> main.openFriendsWindow());
-
-        // Open the Favourites page.
-        favourites.addActionListener(
-            e -> main.showPage("favourites")
-        );
+        favourites.addActionListener(e -> main.showPage("favourites"));
 
         options.add(diary);
         options.add(watchlist);
@@ -116,7 +112,7 @@ public class ProfilePage extends JPanel {
             @Override
             public void componentShown(
                     java.awt.event.ComponentEvent e) {
-                username.setText(main.currentUsername);
+                username.setText(main.getUsername());
                 loadRecentMovies();
             }
         });
@@ -131,79 +127,99 @@ public class ProfilePage extends JPanel {
             "SELECT m.tmdb_id, m.title, d.rating " +
             "FROM diary_entries d " +
             "JOIN movies_new m ON d.tmdb_id = m.tmdb_id " +
-            "ORDER BY d.entry_id DESC LIMIT 4";
+            "JOIN mm70_users.users u ON u.user_id = d.user_id " +
+            "WHERE u.username = ? " +
+            "AND d.entry_id = (" +
+            "    SELECT MAX(d2.entry_id) " +
+            "    FROM diary_entries d2 " +
+            "    WHERE d2.tmdb_id = d.tmdb_id " +
+            "      AND d2.user_id = d.user_id" +
+            ") " +
+            "ORDER BY d.entry_id DESC " +
+            "LIMIT 4";
 
         try (Connection con = DatabaseManager.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = con.prepareStatement(sql)) {
 
-            int count = 0;
+            ps.setString(1, main.getUsername());
 
-            while (rs.next()) {
-                int id = rs.getInt("tmdb_id");
-                String movieTitle = rs.getString("title");
-                String rating = rs.getString("rating");
+            try (ResultSet rs = ps.executeQuery()) {
 
-                JPanel card = new JPanel(new BorderLayout(5, 5));
-                card.setBackground(Color.decode("#241E20"));
+                int count = 0;
 
-                JLabel poster = new JLabel("", SwingConstants.CENTER);
-                poster.setPreferredSize(new Dimension(120, 155));
+                while (rs.next()) {
+                    int id = rs.getInt("tmdb_id");
+                    String movieTitle = rs.getString("title");
+                    String rating = rs.getString("rating");
 
-                File file = new File("posters/" + id + ".jpg");
+                    JPanel card = new JPanel(new BorderLayout(5, 5));
+                    card.setBackground(Color.decode("#241E20"));
 
-                if (file.exists()) {
-                    ImageIcon icon = new ImageIcon(file.getAbsolutePath());
-                    Image image = icon.getImage().getScaledInstance(
-                        110, 145, Image.SCALE_SMOOTH
+                    JLabel poster = new JLabel("", SwingConstants.CENTER);
+                    poster.setPreferredSize(new Dimension(120, 155));
+
+                    File file = new File("posters/" + id + ".jpg");
+
+                    if (file.exists()) {
+                        ImageIcon icon = new ImageIcon(file.getAbsolutePath());
+
+                        Image image = icon.getImage().getScaledInstance(
+                            110, 145, Image.SCALE_SMOOTH
+                        );
+
+                        poster.setIcon(new ImageIcon(image));
+                    } else {
+                        poster.setText("No Poster");
+                        poster.setForeground(TEXT);
+                    }
+
+                    JLabel name = new JLabel(
+                        "<html><center>" + escapeHtml(movieTitle) +
+                        "</center></html>",
+                        SwingConstants.CENTER
                     );
-                    poster.setIcon(new ImageIcon(image));
-                } else {
-                    poster.setText("No Poster");
-                    poster.setForeground(TEXT);
+
+                    name.setForeground(GOLD);
+                    name.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+                    name.addMouseListener(new java.awt.event.MouseAdapter() {
+                        @Override
+                        public void mouseClicked(
+                                java.awt.event.MouseEvent e) {
+                            main.showMovieDetails(id);
+                        }
+                    });
+
+                    JLabel score = new JLabel(
+                        "★ " + rating + "/10",
+                        SwingConstants.CENTER
+                    );
+                    score.setForeground(TEXT);
+
+                    card.add(poster, BorderLayout.NORTH);
+                    card.add(name, BorderLayout.CENTER);
+                    card.add(score, BorderLayout.SOUTH);
+
+                    recentMovies.add(card);
+                    count++;
                 }
 
-                JLabel name = new JLabel(
-                    "<html><center>" + escapeHtml(movieTitle) +
-                    "</center></html>", SwingConstants.CENTER
-                );
-                name.setForeground(GOLD);
-                name.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-                name.addMouseListener(new java.awt.event.MouseAdapter() {
-                    @Override
-                    public void mouseClicked(
-                            java.awt.event.MouseEvent e) {
-                        main.showMovieDetails(id);
-                    }
-                });
-
-                JLabel score = new JLabel(
-                    "★ " + rating + "/10", SwingConstants.CENTER
-                );
-                score.setForeground(TEXT);
-
-                card.add(poster, BorderLayout.NORTH);
-                card.add(name, BorderLayout.CENTER);
-                card.add(score, BorderLayout.SOUTH);
-
-                recentMovies.add(card);
-                count++;
-            }
-
-            if (count == 0) {
-                JLabel empty = new JLabel(
-                    "No movies watched yet", SwingConstants.CENTER
-                );
-                empty.setForeground(TEXT);
-                recentMovies.add(empty);
+                if (count == 0) {
+                    JLabel empty = new JLabel(
+                        "No movies watched yet",
+                        SwingConstants.CENTER
+                    );
+                    empty.setForeground(TEXT);
+                    recentMovies.add(empty);
+                }
             }
 
         } catch (Exception ex) {
             ex.printStackTrace();
 
             JLabel error = new JLabel(
-                "Could not load recent movies", SwingConstants.CENTER
+                "Could not load recent movies",
+                SwingConstants.CENTER
             );
             error.setForeground(TEXT);
             recentMovies.add(error);
@@ -219,6 +235,7 @@ public class ProfilePage extends JPanel {
         return value.replace("&", "&amp;")
                     .replace("<", "&lt;")
                     .replace(">", "&gt;")
-                    .replace("\"", "&quot;");
+                    .replace("\"", "&quot;")
+                    .replace("'", "&#39;");
     }
 }
