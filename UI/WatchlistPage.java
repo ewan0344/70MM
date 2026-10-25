@@ -1,11 +1,12 @@
+
 import javax.swing.*;
 import javax.swing.event.*;
 import java.awt.*;
 import java.io.File;
 import java.sql.*;
-import java.util.ArrayList;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 
 public class WatchlistPage extends JPanel {
 
@@ -32,9 +33,9 @@ public class WatchlistPage extends JPanel {
         styleButton(back);
         back.addActionListener(e -> main.showPage("home"));
 
-        JLabel title = new JLabel("My Watchlist");
+        JLabel title = new JLabel("My Watchlist", JLabel.CENTER);
         title.setForeground(TEXT);
-        title.setFont(new Font("SansSerif", Font.BOLD, 26));
+        title.setFont(new Font("Arial", Font.BOLD, 25));
 
         JButton add = new JButton("+ Add Movie");
         styleButton(add);
@@ -58,23 +59,37 @@ public class WatchlistPage extends JPanel {
 
         ensureWatchlistTable();
         refresh();
+
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                refresh();
+            }
+        });
     }
 
     void styleButton(JButton button) {
         button.setFocusPainted(false);
         button.setForeground(Color.WHITE);
         button.setBackground(ACCENT);
-        button.setBorder(BorderFactory.createEmptyBorder(8, 13, 8, 13));
+        button.setBorder(
+            BorderFactory.createEmptyBorder(8, 13, 8, 13)
+        );
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
 
+    // Each account gets its own watchlist rows.
     void ensureWatchlistTable() {
-        String sql = "CREATE TABLE IF NOT EXISTS watchlist_items (" +
-                     "tmdb_id INT PRIMARY KEY, " +
-                     "status VARCHAR(20) NOT NULL, " +
-                     "CONSTRAINT fk_watchlist_movie " +
-                     "FOREIGN KEY (tmdb_id) REFERENCES movies_new(tmdb_id) " +
-                     "ON DELETE CASCADE)";
+        String sql =
+            "CREATE TABLE IF NOT EXISTS watchlist_items_new (" +
+            "user_id INT NOT NULL, " +
+            "tmdb_id INT NOT NULL, " +
+            "status VARCHAR(20) NOT NULL DEFAULT 'WANTED', " +
+            "PRIMARY KEY (user_id, tmdb_id), " +
+            "FOREIGN KEY (tmdb_id) REFERENCES movies_new(tmdb_id) " +
+            "ON DELETE CASCADE, " +
+            "FOREIGN KEY (user_id) REFERENCES mm70_users.users(user_id) " +
+            "ON DELETE CASCADE)";
 
         try (Connection con = DatabaseManager.getConnection();
              Statement st = con.createStatement()) {
@@ -82,38 +97,56 @@ public class WatchlistPage extends JPanel {
             st.executeUpdate(sql);
 
         } catch (Exception ex) {
-            showError("Could not prepare watchlist table.", ex);
+            showError("Could not prepare the watchlist table.", ex);
         }
     }
 
     void refresh() {
         moviePanel.removeAll();
 
-        String sql = "SELECT m.tmdb_id, m.title " +
-                     "FROM watchlist_items w " +
-                     "JOIN movies_new m ON m.tmdb_id = w.tmdb_id " +
-                     "WHERE w.status <> 'WATCHED' " +
-                     "ORDER BY m.title";
+        String sql =
+            "SELECT m.tmdb_id, m.title, w.status " +
+            "FROM watchlist_items_new w " +
+            "JOIN movies_new m ON m.tmdb_id = w.tmdb_id " +
+            "JOIN mm70_users.users u ON u.user_id = w.user_id " +
+            "WHERE u.username = ? AND w.status <> 'WATCHED' " +
+            "ORDER BY m.title";
 
         try (Connection con = DatabaseManager.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = con.prepareStatement(sql)) {
 
-            while (rs.next()) {
-                int id = rs.getInt("tmdb_id");
-                String title = rs.getString("title");
-                moviePanel.add(movieCard(id, title, false));
+            ps.setString(1, main.getUsername());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                int count = 0;
+
+                while (rs.next()) {
+                    moviePanel.add(movieCard(
+                        rs.getInt("tmdb_id"),
+                        rs.getString("title")
+                    ));
+                    count++;
+                }
+
+                if (count == 0) {
+                    JLabel empty = new JLabel(
+                        "Your watchlist is empty. Add a movie!",
+                        SwingConstants.CENTER
+                    );
+                    empty.setForeground(TEXT);
+                    moviePanel.add(empty);
+                }
             }
 
         } catch (Exception ex) {
-            showError("Could not load watchlist.", ex);
+            showError("Could not load your watchlist.", ex);
         }
 
         moviePanel.revalidate();
         moviePanel.repaint();
     }
 
-    JPanel movieCard(int id, String title, boolean watched) {
+    JPanel movieCard(int id, String title) {
         JPanel card = new JPanel(new BorderLayout(6, 8));
         card.setBackground(CARD);
         card.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -126,7 +159,8 @@ public class WatchlistPage extends JPanel {
         if (file.exists()) {
             ImageIcon icon = new ImageIcon(file.getAbsolutePath());
             Image image = icon.getImage().getScaledInstance(
-                150, 205, Image.SCALE_SMOOTH);
+                150, 205, Image.SCALE_SMOOTH
+            );
             poster.setIcon(new ImageIcon(image));
         } else {
             poster.setText("No poster");
@@ -138,13 +172,13 @@ public class WatchlistPage extends JPanel {
         JLabel name = new JLabel(
             "<html><div style='text-align:center;width:130px'>" +
             escapeHtml(title) + "</div></html>",
-            SwingConstants.CENTER);
-
-        name.setForeground(TEXT);
-        name.setFont(new Font("SansSerif", Font.BOLD, 13));
+            SwingConstants.CENTER
+        );
+        name.setForeground(GOLD);
+        name.setFont(new Font("Arial", Font.BOLD, 13));
         name.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
         name.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 main.showMovieDetails(id);
             }
@@ -155,361 +189,95 @@ public class WatchlistPage extends JPanel {
         JPanel actions = new JPanel(new GridLayout(0, 1, 4, 4));
         actions.setOpaque(false);
 
-        if (!watched) {
-            JButton mark = new JButton("Mark Watched");
-            styleButton(mark);
-            mark.addActionListener(e -> markWatched(id));
-            actions.add(mark);
-        }
+        JButton watched = new JButton("Mark Watched");
+        styleButton(watched);
+        watched.addActionListener(e -> markWatched(id));
+        actions.add(watched);
 
         JButton remove = new JButton("Remove");
         styleButton(remove);
         remove.addActionListener(e -> removeMovie(id));
-
         actions.add(remove);
-        card.add(actions, BorderLayout.SOUTH);
 
+        card.add(actions, BorderLayout.SOUTH);
         return card;
     }
 
-    // Mark watched dialog: normal rating/date fields, enlarged review area
-    void markWatched(int movieId) {
+    // Add a movie for the currently logged-in account.
+    boolean insertWanted(int movieId) {
+        String sql =
+            "INSERT INTO watchlist_items_new (user_id, tmdb_id, status) " +
+            "SELECT u.user_id, ?, 'WANTED' " +
+            "FROM mm70_users.users u WHERE u.username = ? " +
+            "ON DUPLICATE KEY UPDATE status = " +
+            "IF(status = 'WATCHED', status, 'WANTED')";
 
-        JPanel form = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
+        try (Connection con = DatabaseManager.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
 
-        gbc.insets = new Insets(6, 6, 6, 6);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+            ps.setInt(1, movieId);
+            ps.setString(2, main.getUsername());
 
-        JTextField ratingField = new JTextField(10);
+            int result = ps.executeUpdate();
 
-        JTextField dateField = new JTextField(10);
-        dateField.setEditable(false);
-        dateField.setBackground(Color.WHITE);
-
-        JButton calendarButton = new JButton("📅");
-        calendarButton.setToolTipText("Select watched date");
-
-        JPanel datePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        datePanel.add(dateField);
-        datePanel.add(calendarButton);
-
-        calendarButton.addActionListener(e -> showCalendar(dateField));
-
-        JTextArea reviewArea = new JTextArea(5, 25);
-        reviewArea.setLineWrap(true);
-        reviewArea.setWrapStyleWord(true);
-        reviewArea.setFont(new Font("Arial", Font.PLAIN, 14));
-
-        JScrollPane reviewScroll = new JScrollPane(reviewArea);
-        reviewScroll.setPreferredSize(new Dimension(280, 110));
-        reviewScroll.setVerticalScrollBarPolicy(
-            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 0;
-        gbc.weighty = 0;
-        form.add(new JLabel("Rating (0-10)"), gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 1;
-        form.add(ratingField, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        gbc.weightx = 0;
-        form.add(new JLabel("Date watched"), gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 1;
-        form.add(datePanel, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        gbc.weightx = 0;
-        gbc.weighty = 1;
-        form.add(new JLabel("Review"), gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.BOTH;
-        form.add(reviewScroll, gbc);
-
-        int result = JOptionPane.showConfirmDialog(
-            this, form, "Mark Movie as Watched",
-            JOptionPane.OK_CANCEL_OPTION,
-            JOptionPane.PLAIN_MESSAGE);
-
-        if (result != JOptionPane.OK_OPTION) {
-            return;
-        }
-
-        String rating = ratingField.getText().trim();
-        String date = dateField.getText().trim();
-        String review = reviewArea.getText().trim();
-
-        if (rating.isEmpty() || date.isEmpty()) {
-            JOptionPane.showMessageDialog(
-                this, "Enter a rating and select a date.");
-            return;
-        }
-
-        double value;
-
-        try {
-            value = Double.parseDouble(rating);
-
-            if (value < 0 || value > 10) {
+            if (result == 0) {
                 JOptionPane.showMessageDialog(
-                    this, "Rating must be between 0 and 10.");
-                return;
-            }
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(
-                this, "Enter a valid rating.");
-            return;
-        }
-
-        Connection con = null;
-
-        try {
-            con = DatabaseManager.getConnection();
-            con.setAutoCommit(false);
-
-            String insert = "INSERT INTO diary_entries " +
-                            "(tmdb_id, rating, watched_date, review) " +
-                            "VALUES (?, ?, ?, ?)";
-
-            try (PreparedStatement ps = con.prepareStatement(insert)) {
-                ps.setInt(1, movieId);
-                ps.setDouble(2, value);
-                ps.setString(3, date);
-                ps.setString(4, review);
-                ps.executeUpdate();
+                    this, "Your account was not found. Please log in again."
+                );
+                return false;
             }
 
-            String delete = "DELETE FROM watchlist_items WHERE tmdb_id = ?";
-
-            try (PreparedStatement ps = con.prepareStatement(delete)) {
-                ps.setInt(1, movieId);
-                ps.executeUpdate();
-            }
-
-            con.commit();
-            con.setAutoCommit(true);
-
-            refresh();
-
-            JOptionPane.showMessageDialog(
-                this, "Movie moved to your Diary!");
-
-            main.showPage("diary");
+            return true;
 
         } catch (Exception ex) {
-            if (con != null) {
-                try {
-                    con.rollback();
-                    con.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
-            }
-
-            showError("Could not mark movie as watched.", ex);
-
-        } finally {
-            if (con != null) {
-                try {
-                    con.close();
-                } catch (SQLException ignored) {
-                }
-            }
+            showError("Could not add movie to your watchlist.", ex);
+            return false;
         }
     }
 
-    // Calendar window with month arrows and year selector
-    void showCalendar(JTextField dateField) {
-
-        Window owner = SwingUtilities.getWindowAncestor(this);
-
-        JDialog calendar = new JDialog(
-            owner instanceof Frame ? (Frame) owner : null,
-            "Select Date Watched",
-            true
+    void removeMovie(int movieId) {
+        int answer = JOptionPane.showConfirmDialog(
+            this,
+            "Remove this movie from your watchlist?",
+            "Confirm removal",
+            JOptionPane.YES_NO_OPTION
         );
 
-        calendar.setSize(390, 400);
-        calendar.setMinimumSize(new Dimension(390, 400));
-        calendar.setLocationRelativeTo(this);
-        calendar.setLayout(new BorderLayout(5, 5));
+        if (answer != JOptionPane.YES_OPTION) return;
 
-        JPanel top = new JPanel(new BorderLayout(5, 5));
-        top.setBackground(Color.decode("#171415"));
+        String sql =
+            "DELETE w FROM watchlist_items_new w " +
+            "JOIN mm70_users.users u ON u.user_id = w.user_id " +
+            "WHERE w.tmdb_id = ? AND u.username = ?";
 
-        JButton previous = new JButton("←");
-        JButton next = new JButton("→");
+        try (Connection con = DatabaseManager.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
 
-        JLabel monthLabel = new JLabel("", JLabel.CENTER);
-        monthLabel.setForeground(GOLD);
-        monthLabel.setFont(new Font("Arial", Font.BOLD, 18));
+            ps.setInt(1, movieId);
+            ps.setString(2, main.getUsername());
+            ps.executeUpdate();
+            refresh();
 
-        JButton yearButton = new JButton("Year ▾");
-        yearButton.setForeground(GOLD);
-        yearButton.setBackground(Color.decode("#242021"));
-        yearButton.setFocusPainted(false);
-        yearButton.setMargin(new Insets(3, 8, 3, 8));
-
-        JPanel center = new JPanel(new BorderLayout(5, 0));
-        center.setBackground(Color.decode("#171415"));
-        center.add(monthLabel, BorderLayout.CENTER);
-        center.add(yearButton, BorderLayout.EAST);
-
-        top.add(previous, BorderLayout.WEST);
-        top.add(center, BorderLayout.CENTER);
-        top.add(next, BorderLayout.EAST);
-
-        JPanel daysPanel = new JPanel(new GridLayout(7, 7, 3, 3));
-        daysPanel.setBackground(Color.decode("#171415"));
-        daysPanel.setBorder(
-            BorderFactory.createEmptyBorder(5, 5, 5, 5));
-
-        calendar.add(top, BorderLayout.NORTH);
-        calendar.add(daysPanel, BorderLayout.CENTER);
-
-        YearMonth[] currentMonth = {YearMonth.now()};
-
-        try {
-            if (!dateField.getText().isEmpty()) {
-                LocalDate selectedDate = LocalDate.parse(
-                    dateField.getText(),
-                    DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-
-                currentMonth[0] = YearMonth.from(selectedDate);
-            }
         } catch (Exception ex) {
-            currentMonth[0] = YearMonth.now();
+            showError("Could not remove movie.", ex);
         }
-
-        Runnable refreshCalendar = () -> updateCalendar(
-            currentMonth[0], monthLabel, daysPanel, dateField, calendar);
-
-        previous.addActionListener(e -> {
-            currentMonth[0] = currentMonth[0].minusMonths(1);
-            refreshCalendar.run();
-        });
-
-        next.addActionListener(e -> {
-            currentMonth[0] = currentMonth[0].plusMonths(1);
-            refreshCalendar.run();
-        });
-
-        yearButton.addActionListener(e -> {
-            int thisYear = Year.now().getValue();
-
-            Integer[] years = new Integer[101];
-
-            for (int i = 0; i < years.length; i++) {
-                years[i] = thisYear - 80 + i;
-            }
-
-            JComboBox<Integer> yearList = new JComboBox<>(years);
-            yearList.setSelectedItem(currentMonth[0].getYear());
-
-            int answer = JOptionPane.showConfirmDialog(
-                calendar, yearList, "Select Year",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE);
-
-            if (answer == JOptionPane.OK_OPTION) {
-                Integer selectedYear =
-                    (Integer) yearList.getSelectedItem();
-
-                if (selectedYear != null) {
-                    currentMonth[0] = YearMonth.of(
-                        selectedYear, currentMonth[0].getMonth());
-
-                    refreshCalendar.run();
-                }
-            }
-        });
-
-        refreshCalendar.run();
-        calendar.setVisible(true);
-    }
-
-    // Draw the numbered days
-    void updateCalendar(
-            YearMonth month,
-            JLabel monthLabel,
-            JPanel daysPanel,
-            JTextField dateField,
-            JDialog calendar) {
-
-        monthLabel.setText(
-            month.getMonth().toString() + " " + month.getYear());
-
-        daysPanel.removeAll();
-        daysPanel.setLayout(new GridLayout(7, 7, 3, 3));
-
-        String[] weekdays = {
-            "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
-        };
-
-        for (String day : weekdays) {
-            JLabel label = new JLabel(day, JLabel.CENTER);
-            label.setForeground(GOLD);
-            label.setFont(new Font("Arial", Font.BOLD, 13));
-            daysPanel.add(label);
-        }
-
-        int firstDay = month.atDay(1).getDayOfWeek().getValue();
-
-        for (int i = 1; i < firstDay; i++) {
-            daysPanel.add(new JLabel(""));
-        }
-
-        for (int day = 1; day <= month.lengthOfMonth(); day++) {
-            int selectedDay = day;
-
-            JButton dayButton = new JButton(String.valueOf(day));
-            dayButton.setBackground(ACCENT);
-            dayButton.setForeground(Color.WHITE);
-            dayButton.setMargin(new Insets(2, 2, 2, 2));
-
-            dayButton.addActionListener(e -> {
-                LocalDate selectedDate = month.atDay(selectedDay);
-
-                DateTimeFormatter formatter =
-                    DateTimeFormatter.ofPattern("dd-MM-yyyy");
-
-                dateField.setText(selectedDate.format(formatter));
-                calendar.dispose();
-            });
-
-            daysPanel.add(dayButton);
-        }
-
-        while (daysPanel.getComponentCount() < 49) {
-            daysPanel.add(new JLabel(""));
-        }
-
-        daysPanel.revalidate();
-        daysPanel.repaint();
     }
 
     void openAddMovieDialog() {
         JDialog dialog = new JDialog(
             SwingUtilities.getWindowAncestor(this),
             "Add Movie to Watchlist",
-            Dialog.ModalityType.APPLICATION_MODAL);
+            Dialog.ModalityType.APPLICATION_MODAL
+        );
 
         dialog.setSize(500, 450);
         dialog.setLocationRelativeTo(this);
         dialog.setLayout(new BorderLayout(10, 10));
 
         JTextField search = new JTextField();
-        search.setBorder(BorderFactory.createTitledBorder("Search movie"));
+        search.setBorder(
+            BorderFactory.createTitledBorder("Search movie")
+        );
 
         DefaultListModel<Movie> model = new DefaultListModel<>();
         JList<Movie> list = new JList<>(model);
@@ -528,70 +296,69 @@ public class WatchlistPage extends JPanel {
         dialog.add(bottom, BorderLayout.SOUTH);
 
         ArrayList<Movie> allMovies = new ArrayList<>();
-        ArrayList<Movie> watchlistMovies = new ArrayList<>();
+        ArrayList<Integer> existingIds = new ArrayList<>();
 
-        // Load every movie from the database.
         try (Connection con = DatabaseManager.getConnection();
              PreparedStatement ps = con.prepareStatement(
-                 "SELECT tmdb_id, title FROM movies_new ORDER BY title");
+                "SELECT tmdb_id, title FROM movies_new ORDER BY title");
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                Movie movie = new Movie(
-                    rs.getInt("tmdb_id"), rs.getString("title"));
-
-                allMovies.add(movie);
+                allMovies.add(new Movie(
+                    rs.getInt("tmdb_id"),
+                    rs.getString("title")
+                ));
             }
 
         } catch (Exception ex) {
             showError("Could not load movies.", ex);
+            dialog.dispose();
+            return;
         }
 
-        // Load movies that are already in the watchlist.
-        try (Connection con = DatabaseManager.getConnection();
-             PreparedStatement ps = con.prepareStatement(
-                 "SELECT tmdb_id FROM watchlist_items");
-             ResultSet rs = ps.executeQuery()) {
+        String existingSql =
+            "SELECT w.tmdb_id FROM watchlist_items_new w " +
+            "JOIN mm70_users.users u ON u.user_id = w.user_id " +
+            "WHERE u.username = ?";
 
-            while (rs.next()) {
-                watchlistMovies.add(new Movie(rs.getInt("tmdb_id"), ""));
+        try (Connection con = DatabaseManager.getConnection();
+             PreparedStatement ps = con.prepareStatement(existingSql)) {
+
+            ps.setString(1, main.getUsername());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    existingIds.add(rs.getInt("tmdb_id"));
+                }
             }
 
         } catch (Exception ex) {
-            showError("Could not check existing watchlist movies.", ex);
+            showError("Could not check your watchlist.", ex);
+            dialog.dispose();
+            return;
         }
 
         status.setText(allMovies.size() + " movies in database");
 
         search.getDocument().addDocumentListener(new DocumentListener() {
-
             void filter() {
                 model.clear();
 
                 String text = search.getText().trim().toLowerCase();
 
                 if (text.isEmpty()) {
-                    status.setText(allMovies.size() + " movies in database");
+                    status.setText("Type to search movies");
                     return;
                 }
 
-                int matchesInDatabase = 0;
+                int matches = 0;
                 int alreadyAdded = 0;
 
                 for (Movie movie : allMovies) {
                     if (movie.title.toLowerCase().contains(text)) {
-                        matchesInDatabase++;
+                        matches++;
 
-                        boolean existsInWatchlist = false;
-
-                        for (Movie existing : watchlistMovies) {
-                            if (existing.id == movie.id) {
-                                existsInWatchlist = true;
-                                break;
-                            }
-                        }
-
-                        if (existsInWatchlist) {
+                        if (existingIds.contains(movie.id)) {
                             alreadyAdded++;
                         } else {
                             model.addElement(movie);
@@ -599,26 +366,18 @@ public class WatchlistPage extends JPanel {
                     }
                 }
 
-                if (matchesInDatabase == 0) {
+                if (matches == 0) {
                     status.setText("Movie not found!");
                 } else if (model.isEmpty() && alreadyAdded > 0) {
                     status.setText("Movie already in your watchlist!");
                 } else {
-                    status.setText(model.getSize() + " matching movie(s) found");
+                    status.setText(model.size() + " matching movie(s)");
                 }
             }
 
-            public void insertUpdate(DocumentEvent e) {
-                filter();
-            }
-
-            public void removeUpdate(DocumentEvent e) {
-                filter();
-            }
-
-            public void changedUpdate(DocumentEvent e) {
-                filter();
-            }
+            public void insertUpdate(DocumentEvent e) { filter(); }
+            public void removeUpdate(DocumentEvent e) { filter(); }
+            public void changedUpdate(DocumentEvent e) { filter(); }
         });
 
         addSelected.addActionListener(e -> {
@@ -626,7 +385,8 @@ public class WatchlistPage extends JPanel {
 
             if (selected == null) {
                 JOptionPane.showMessageDialog(
-                    dialog, "Please select a movie first.");
+                    dialog, "Please select a movie first."
+                );
                 return;
             }
 
@@ -639,50 +399,214 @@ public class WatchlistPage extends JPanel {
         dialog.setVisible(true);
     }
 
-    boolean insertWanted(int movieId) {
-        String sql = "INSERT INTO watchlist_items (tmdb_id, status) " +
-                     "VALUES (?, 'WANTED')";
+    void markWatched(int movieId) {
+        JTextField ratingField = new JTextField(10);
 
-        try (Connection con = DatabaseManager.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+        JTextField dateField = new JTextField(10);
+        dateField.setEditable(false);
 
-            ps.setInt(1, movieId);
-            ps.executeUpdate();
-            return true;
+        JButton calendarButton = new JButton("Calendar");
+        calendarButton.addActionListener(e -> showCalendar(dateField));
 
-        } catch (Exception ex) {
-            showError(
-                "Could not add movie. It may already be in your list.", ex);
-            return false;
-        }
-    }
+        JPanel datePanel = new JPanel(new BorderLayout(5, 0));
+        datePanel.add(dateField, BorderLayout.CENTER);
+        datePanel.add(calendarButton, BorderLayout.EAST);
 
-    void removeMovie(int movieId) {
-        int answer = JOptionPane.showConfirmDialog(
-            this, "Remove this movie from your watchlist?",
-            "Confirm removal", JOptionPane.YES_NO_OPTION);
+        JTextArea reviewArea = new JTextArea(5, 22);
+        reviewArea.setLineWrap(true);
+        reviewArea.setWrapStyleWord(true);
 
-        if (answer != JOptionPane.YES_OPTION) {
+        JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
+        form.add(new JLabel("Rating (0-10)"));
+        form.add(ratingField);
+        form.add(new JLabel("Date watched"));
+        form.add(datePanel);
+        form.add(new JLabel("Review"));
+        form.add(new JScrollPane(reviewArea));
+
+        int result = JOptionPane.showConfirmDialog(
+            this, form, "Mark Movie as Watched",
+            JOptionPane.OK_CANCEL_OPTION
+        );
+
+        if (result != JOptionPane.OK_OPTION) return;
+
+        double rating;
+
+        try {
+            rating = Double.parseDouble(ratingField.getText().trim());
+
+            if (rating < 0 || rating > 10) {
+                JOptionPane.showMessageDialog(
+                    this, "Rating must be between 0 and 10."
+                );
+                return;
+            }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Enter a valid rating.");
             return;
         }
 
-        try (Connection con = DatabaseManager.getConnection();
-             PreparedStatement ps = con.prepareStatement(
-                 "DELETE FROM watchlist_items WHERE tmdb_id = ?")) {
+        String date = dateField.getText().trim();
 
-            ps.setInt(1, movieId);
-            ps.executeUpdate();
-            refresh();
+        if (date.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                this, "Please select the date watched."
+            );
+            return;
+        }
+
+        Connection con = null;
+
+        try {
+            con = DatabaseManager.getConnection();
+            con.setAutoCommit(false);
+
+            String insert =
+                "INSERT INTO diary_entries " +
+                "(tmdb_id, rating, watched_date, review, user_id) " +
+                "SELECT ?, ?, ?, ?, u.user_id " +
+                "FROM mm70_users.users u WHERE u.username = ?";
+
+            int inserted;
+
+            try (PreparedStatement ps = con.prepareStatement(insert)) {
+                ps.setInt(1, movieId);
+                ps.setDouble(2, rating);
+                ps.setString(3, date);
+                ps.setString(4, reviewArea.getText().trim());
+                ps.setString(5, main.getUsername());
+                inserted = ps.executeUpdate();
+            }
+
+            if (inserted == 0) {
+                throw new SQLException("Logged-in account was not found.");
+            }
+
+            String delete =
+                "DELETE w FROM watchlist_items_new w " +
+                "JOIN mm70_users.users u ON u.user_id = w.user_id " +
+                "WHERE w.tmdb_id = ? AND u.username = ?";
+
+            try (PreparedStatement ps = con.prepareStatement(delete)) {
+                ps.setInt(1, movieId);
+                ps.setString(2, main.getUsername());
+                ps.executeUpdate();
+            }
+
+            con.commit();
+            main.showPage("diary");
+
+            JOptionPane.showMessageDialog(
+                this, "Movie moved to your Diary!"
+            );
 
         } catch (Exception ex) {
-            showError("Could not remove movie.", ex);
+            if (con != null) {
+                try {
+                    con.rollback();
+                } catch (SQLException ignored) {}
+            }
+
+            showError("Could not mark movie as watched.", ex);
+
+        } finally {
+            if (con != null) {
+                try {
+                    con.setAutoCommit(true);
+                    con.close();
+                } catch (SQLException ignored) {}
+            }
         }
     }
 
+    void showCalendar(JTextField dateField) {
+        JDialog calendar = new JDialog(
+            SwingUtilities.getWindowAncestor(this),
+            "Select Date Watched",
+            Dialog.ModalityType.APPLICATION_MODAL
+        );
+
+        calendar.setSize(360, 350);
+        calendar.setLocationRelativeTo(this);
+        calendar.setLayout(new BorderLayout());
+
+        JPanel top = new JPanel(new BorderLayout());
+        JButton previous = new JButton("←");
+        JButton next = new JButton("→");
+        JLabel monthLabel = new JLabel("", JLabel.CENTER);
+        monthLabel.setForeground(GOLD);
+
+        top.add(previous, BorderLayout.WEST);
+        top.add(monthLabel, BorderLayout.CENTER);
+        top.add(next, BorderLayout.EAST);
+        calendar.add(top, BorderLayout.NORTH);
+
+        JPanel daysPanel = new JPanel(new GridLayout(0, 7, 3, 3));
+        calendar.add(daysPanel, BorderLayout.CENTER);
+
+        YearMonth[] month = {YearMonth.now()};
+
+        Runnable update = () -> {
+            monthLabel.setText(
+                month[0].getMonth() + " " + month[0].getYear()
+            );
+            daysPanel.removeAll();
+
+            String[] weekdays =
+                {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+
+            for (String day : weekdays) {
+                daysPanel.add(new JLabel(day, JLabel.CENTER));
+            }
+
+            for (int i = 1; i < month[0].atDay(1)
+                    .getDayOfWeek().getValue(); i++) {
+                daysPanel.add(new JLabel(""));
+            }
+
+            for (int d = 1; d <= month[0].lengthOfMonth(); d++) {
+                int selectedDay = d;
+                JButton button = new JButton(String.valueOf(d));
+                button.setBackground(ACCENT);
+                button.setForeground(Color.WHITE);
+
+                button.addActionListener(e -> {
+                    dateField.setText(
+                        month[0].atDay(selectedDay).format(
+                            DateTimeFormatter.ofPattern("dd-MM-yyyy")
+                        )
+                    );
+                    calendar.dispose();
+                });
+
+                daysPanel.add(button);
+            }
+
+            while (daysPanel.getComponentCount() < 49) {
+                daysPanel.add(new JLabel(""));
+            }
+
+            daysPanel.revalidate();
+            daysPanel.repaint();
+        };
+
+        previous.addActionListener(e -> {
+            month[0] = month[0].minusMonths(1);
+            update.run();
+        });
+
+        next.addActionListener(e -> {
+            month[0] = month[0].plusMonths(1);
+            update.run();
+        });
+
+        update.run();
+        calendar.setVisible(true);
+    }
+
     String escapeHtml(String value) {
-        if (value == null) {
-            return "";
-        }
+        if (value == null) return "";
 
         return value.replace("&", "&amp;")
                     .replace("<", "&lt;")
@@ -694,8 +618,11 @@ public class WatchlistPage extends JPanel {
         ex.printStackTrace();
 
         JOptionPane.showMessageDialog(
-            this, message + "\n" + ex.getMessage(),
-            "Watchlist Error", JOptionPane.ERROR_MESSAGE);
+            this,
+            message + "\n" + ex.getMessage(),
+            "Watchlist Error",
+            JOptionPane.ERROR_MESSAGE
+        );
     }
 
     static class Movie {
@@ -707,6 +634,7 @@ public class WatchlistPage extends JPanel {
             this.title = title == null ? "Untitled movie" : title;
         }
 
+        @Override
         public String toString() {
             return title;
         }

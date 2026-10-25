@@ -49,6 +49,7 @@ public class Main extends JFrame {
     // Navigate between application pages.
     public void showPage(String pageName) {
 
+        // Recreate Watchlist so it refreshes when opened.
         if ("watchlist".equals(pageName)) {
             Component oldPage = getPageComponent("watchlist");
 
@@ -59,6 +60,7 @@ public class Main extends JFrame {
             mainPanel.add(new WatchlistPage(this), "watchlist");
         }
 
+        // Recreate Favourites so it refreshes when opened.
         if ("favourites".equals(pageName)) {
             Component oldPage = getPageComponent("favourites");
 
@@ -69,6 +71,7 @@ public class Main extends JFrame {
             mainPanel.add(new FavouritesPage(this), "favourites");
         }
 
+        // Refresh admin statistics when opening the admin page.
         if ("admin".equals(pageName)) {
             for (Component component : mainPanel.getComponents()) {
                 if (component instanceof AdminDashboard) {
@@ -83,8 +86,9 @@ public class Main extends JFrame {
         mainPanel.repaint();
     }
 
-    // Find an existing page by its type.
+    // Find an existing Watchlist or Favourites page.
     private Component getPageComponent(String pageName) {
+
         for (Component component : mainPanel.getComponents()) {
 
             if ("watchlist".equals(pageName)
@@ -121,22 +125,25 @@ public class Main extends JFrame {
         mainPanel.repaint();
     }
 
-    // Open the Friends window.
+    // Open Friends using this Main instance and logged-in username.
     public void openFriendsWindow() {
+
         try {
             UserDatabase.setup();
-            new FriendsPage(currentUsername);
+            new FriendsPage(this, currentUsername);
 
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(
                 this,
                 "Could not open Friends: " + ex.getMessage()
             );
+
             ex.printStackTrace();
         }
     }
 
     public static void main(String[] args) {
+
         SwingUtilities.invokeLater(() -> {
             Main app = new Main();
             app.setVisible(true);
