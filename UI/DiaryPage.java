@@ -1,4 +1,3 @@
-
 import javax.swing.*;
 import javax.swing.event.*;
 import java.awt.*;
@@ -16,7 +15,7 @@ public class DiaryPage extends JPanel {
     private final Color BG = Color.decode("#171415");
     private final Color CARD = Color.decode("#241E20");
     private final Color GOLD = Color.decode("#D6A36A");
-    private final Color RED = Color.decode("#A64B52");
+    private final Color RED = Color.decode("#9d4b52");
     private final Color TEXT = Color.decode("#F1E9DD");
 
     public DiaryPage(Main main) {
@@ -56,15 +55,13 @@ public class DiaryPage extends JPanel {
 
         topPanel.add(backButton, BorderLayout.WEST);
         topPanel.add(label, BorderLayout.CENTER);
-
         panel.add(topPanel, BorderLayout.NORTH);
 
         diaryPanel = new JPanel();
         diaryPanel.setLayout(new BoxLayout(diaryPanel, BoxLayout.Y_AXIS));
         diaryPanel.setBackground(BG);
         diaryPanel.setBorder(
-            BorderFactory.createEmptyBorder(10, 10, 10, 10)
-        );
+                BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JScrollPane scroll = new JScrollPane(diaryPanel);
         scroll.getViewport().setBackground(BG);
@@ -84,22 +81,21 @@ public class DiaryPage extends JPanel {
         bottom.add(addMovie);
 
         panel.add(bottom, BorderLayout.SOUTH);
-
         add(panel, BorderLayout.CENTER);
     }
 
     private void createDiaryTable() {
         String sql =
-            "CREATE TABLE IF NOT EXISTS diary_entries (" +
-            "entry_id INT AUTO_INCREMENT PRIMARY KEY, " +
-            "tmdb_id INT NOT NULL, " +
-            "rating DECIMAL(3,1) NOT NULL, " +
-            "watched_date VARCHAR(20) NOT NULL, " +
-            "review TEXT, " +
-            "user_id INT NULL, " +
-            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-            "FOREIGN KEY (tmdb_id) REFERENCES movies_new(tmdb_id) " +
-            "ON DELETE CASCADE)";
+                "CREATE TABLE IF NOT EXISTS diary_entries (" +
+                "entry_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "tmdb_id INT NOT NULL, " +
+                "rating DECIMAL(3,1) NOT NULL, " +
+                "watched_date VARCHAR(20) NOT NULL, " +
+                "review TEXT, " +
+                "user_id INT NULL, " +
+                "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "FOREIGN KEY (tmdb_id) REFERENCES movies_new(tmdb_id) " +
+                "ON DELETE CASCADE)";
 
         try (Connection con = DatabaseManager.getConnection();
              Statement st = con.createStatement()) {
@@ -115,8 +111,7 @@ public class DiaryPage extends JPanel {
 
             if (!hasUserId) {
                 st.executeUpdate(
-                    "ALTER TABLE diary_entries ADD COLUMN user_id INT NULL"
-                );
+                        "ALTER TABLE diary_entries ADD COLUMN user_id INT NULL");
             }
 
         } catch (Exception ex) {
@@ -128,13 +123,13 @@ public class DiaryPage extends JPanel {
         diaryPanel.removeAll();
 
         String sql =
-            "SELECT d.entry_id, m.tmdb_id, m.title, " +
-            "d.rating, d.watched_date, d.review " +
-            "FROM diary_entries d " +
-            "JOIN movies_new m ON d.tmdb_id = m.tmdb_id " +
-            "JOIN mm70_users.users u ON u.user_id = d.user_id " +
-            "WHERE u.username = ? " +
-            "ORDER BY d.entry_id DESC";
+                "SELECT d.entry_id, m.tmdb_id, m.title, " +
+                "d.rating, d.watched_date, d.review " +
+                "FROM diary_entries d " +
+                "JOIN movies_new m ON d.tmdb_id = m.tmdb_id " +
+                "JOIN mm70_users.users u ON u.user_id = d.user_id " +
+                "WHERE u.username = ? " +
+                "ORDER BY d.entry_id DESC";
 
         try (Connection con = DatabaseManager.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -146,21 +141,19 @@ public class DiaryPage extends JPanel {
 
                 while (rs.next()) {
                     addToDiary(
-                        rs.getInt("entry_id"),
-                        rs.getInt("tmdb_id"),
-                        rs.getString("title"),
-                        rs.getString("rating"),
-                        rs.getString("watched_date"),
-                        rs.getString("review")
-                    );
+                            rs.getInt("entry_id"),
+                            rs.getInt("tmdb_id"),
+                            rs.getString("title"),
+                            rs.getString("rating"),
+                            rs.getString("watched_date"),
+                            rs.getString("review"));
                     count++;
                 }
 
                 if (count == 0) {
                     JLabel empty = new JLabel(
-                        "No diary movies yet. Click Add movie to begin.",
-                        SwingConstants.CENTER
-                    );
+                            "No diary movies yet. Click Add movie to begin.",
+                            SwingConstants.CENTER);
                     empty.setForeground(TEXT);
                     empty.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -177,6 +170,10 @@ public class DiaryPage extends JPanel {
         diaryPanel.repaint();
     }
 
+    // =========================================================
+    // ADD MOVIE DIALOG WITH MOVIE AND DIRECTOR AUTOCOMPLETE
+    // =========================================================
+
     private void addMovieDialog() {
         JPanel moviePanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -185,6 +182,7 @@ public class DiaryPage extends JPanel {
         gbc.anchor = GridBagConstraints.WEST;
 
         JTextField nameField = new JTextField(22);
+        JTextField directorField = new JTextField(22);
         JTextField ratingField = new JTextField(18);
         JTextField dateField = new JTextField(12);
 
@@ -206,40 +204,68 @@ public class DiaryPage extends JPanel {
         datePanel.add(dateField, BorderLayout.CENTER);
         datePanel.add(calendarButton, BorderLayout.EAST);
 
-        DefaultListModel<Movie> suggestionModel = new DefaultListModel<>();
-        JList<Movie> suggestionList = new JList<>(suggestionModel);
-        suggestionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        suggestionList.setVisibleRowCount(5);
-        suggestionList.setFixedCellHeight(24);
+        // Movie autocomplete list
+        DefaultListModel<Movie> movieModel = new DefaultListModel<>();
+        JList<Movie> movieList = new JList<>(movieModel);
+        movieList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        movieList.setVisibleRowCount(5);
+        movieList.setFixedCellHeight(24);
 
-        JScrollPane suggestionScroll = new JScrollPane(suggestionList);
-        suggestionScroll.setPreferredSize(new Dimension(280, 120));
-        suggestionScroll.setVisible(false);
+        JScrollPane movieScroll = new JScrollPane(movieList);
+        movieScroll.setPreferredSize(new Dimension(280, 100));
+        movieScroll.setVisible(false);
 
-        JLabel searchStatus = new JLabel("Type to search movies");
-        searchStatus.setForeground(Color.DARK_GRAY);
+        JLabel movieStatus = new JLabel("Type to search movies");
+        movieStatus.setForeground(Color.DARK_GRAY);
 
         JPanel namePanel = new JPanel();
         namePanel.setLayout(new BoxLayout(namePanel, BoxLayout.Y_AXIS));
         namePanel.add(nameField);
-        namePanel.add(suggestionScroll);
-        namePanel.add(searchStatus);
+        namePanel.add(movieScroll);
+        namePanel.add(movieStatus);
+
+        // Director autocomplete list
+        DefaultListModel<String> directorModel = new DefaultListModel<>();
+        JList<String> directorList = new JList<>(directorModel);
+        directorList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        directorList.setVisibleRowCount(5);
+        directorList.setFixedCellHeight(24);
+
+        JScrollPane directorScroll = new JScrollPane(directorList);
+        directorScroll.setPreferredSize(new Dimension(280, 100));
+        directorScroll.setVisible(false);
+
+        JLabel directorStatus = new JLabel("Type to search directors");
+        directorStatus.setForeground(Color.DARK_GRAY);
+
+        JPanel directorPanel = new JPanel();
+        directorPanel.setLayout(new BoxLayout(directorPanel, BoxLayout.Y_AXIS));
+        directorPanel.add(directorField);
+        directorPanel.add(directorScroll);
+        directorPanel.add(directorStatus);
 
         int[] selectedMovieId = {-1};
-        boolean[] selecting = {false};
+        String[] selectedDirector = {""};
+        boolean[] selectingMovie = {false};
+        boolean[] selectingDirector = {false};
 
         ArrayList<Movie> allMovies = new ArrayList<>();
+        ArrayList<String> allDirectors = new ArrayList<>();
+
+        // Load movies and their directors.
+        String movieSql =
+                "SELECT tmdb_id, title, director " +
+                "FROM movies_new ORDER BY title";
 
         try (Connection con = DatabaseManager.getConnection();
-             PreparedStatement ps = con.prepareStatement(
-                 "SELECT tmdb_id, title FROM movies_new ORDER BY title");
+             PreparedStatement ps = con.prepareStatement(movieSql);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 allMovies.add(new Movie(
-                    rs.getInt("tmdb_id"),
-                    rs.getString("title")
-                ));
+                        rs.getInt("tmdb_id"),
+                        rs.getString("title"),
+                        rs.getString("director")));
             }
 
         } catch (Exception ex) {
@@ -247,80 +273,215 @@ public class DiaryPage extends JPanel {
             return;
         }
 
+        // Load unique director names.
+        String directorSql =
+                "SELECT DISTINCT TRIM(director) AS director " +
+                "FROM movies_new " +
+                "WHERE director IS NOT NULL " +
+                "AND TRIM(director) <> '' " +
+                "ORDER BY director";
+
+        try (Connection con = DatabaseManager.getConnection();
+             PreparedStatement ps = con.prepareStatement(directorSql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                String director = rs.getString("director");
+
+                if (director != null && !director.trim().isEmpty()) {
+                    allDirectors.add(director.trim());
+                }
+            }
+
+        } catch (Exception ex) {
+            showError("Could not load directors from database.", ex);
+            return;
+        }
+
+        // Filter movies by title and selected director.
+        Runnable filterMovies = () -> {
+            if (selectingMovie[0]) {
+                return;
+            }
+
+            selectedMovieId[0] = -1;
+            movieList.clearSelection();
+            movieModel.clear();
+
+            String text = nameField.getText().trim().toLowerCase();
+            String chosenDirector =
+                    selectedDirector[0].trim().toLowerCase();
+
+            if (text.isEmpty() && chosenDirector.isEmpty()) {
+                movieScroll.setVisible(false);
+                movieStatus.setText("Type to search movies");
+                namePanel.revalidate();
+                namePanel.repaint();
+                return;
+            }
+
+            for (Movie movie : allMovies) {
+                boolean titleMatches =
+                        text.isEmpty() ||
+                        movie.title.toLowerCase().contains(text);
+
+                boolean directorMatches =
+                        chosenDirector.isEmpty() ||
+                        movie.director.equalsIgnoreCase(chosenDirector);
+
+                if (titleMatches && directorMatches) {
+                    movieModel.addElement(movie);
+
+                    if (movieModel.getSize() >= 30) {
+                        break;
+                    }
+                }
+            }
+
+            if (movieModel.isEmpty()) {
+                movieScroll.setVisible(false);
+                movieStatus.setText("No matching movies found");
+                movieStatus.setForeground(RED);
+            } else {
+                movieScroll.setVisible(true);
+                movieStatus.setText(
+                        movieModel.getSize() + " matching movies found");
+                movieStatus.setForeground(Color.DARK_GRAY);
+            }
+
+            namePanel.revalidate();
+            namePanel.repaint();
+        };
+
+        // Movie name autocomplete
         nameField.getDocument().addDocumentListener(new DocumentListener() {
+            private void update() {
+                if (!selectingMovie[0]) {
+                    filterMovies.run();
+                }
+            }
 
-            private void filterMovies() {
-                if (selecting[0]) return;
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                update();
+            }
 
-                selectedMovieId[0] = -1;
-                suggestionList.clearSelection();
-                suggestionModel.clear();
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                update();
+            }
 
-                String text = nameField.getText().trim().toLowerCase();
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                update();
+            }
+        });
 
-                if (text.isEmpty()) {
-                    suggestionScroll.setVisible(false);
-                    searchStatus.setText("Type to search movies");
-                    namePanel.revalidate();
-                    namePanel.repaint();
+        // Director autocomplete: "ch" shows directors beginning with "ch".
+        directorField.getDocument().addDocumentListener(new DocumentListener() {
+            private void filterDirectors() {
+                if (selectingDirector[0]) {
                     return;
                 }
 
-                for (Movie movie : allMovies) {
-                    if (movie.title.toLowerCase().contains(text)) {
-                        suggestionModel.addElement(movie);
+                selectedDirector[0] = "";
+                directorList.clearSelection();
+                directorModel.clear();
 
-                        if (suggestionModel.getSize() >= 30) {
+                String text =
+                        directorField.getText().trim().toLowerCase();
+
+                if (text.isEmpty()) {
+                    directorScroll.setVisible(false);
+                    directorStatus.setText("Type to search directors");
+                    filterMovies.run();
+                    directorPanel.revalidate();
+                    directorPanel.repaint();
+                    return;
+                }
+
+                for (String director : allDirectors) {
+                    if (director.toLowerCase().startsWith(text)) {
+                        directorModel.addElement(director);
+
+                        if (directorModel.getSize() >= 30) {
                             break;
                         }
                     }
                 }
 
-                if (suggestionModel.isEmpty()) {
-                    suggestionScroll.setVisible(false);
-                    searchStatus.setText("Movie not found!");
-                    searchStatus.setForeground(RED);
+                if (directorModel.isEmpty()) {
+                    directorScroll.setVisible(false);
+                    directorStatus.setText("Director not found!");
+                    directorStatus.setForeground(RED);
                 } else {
-                    suggestionScroll.setVisible(true);
-                    searchStatus.setText(
-                        suggestionModel.getSize() + " matching movies found"
-                    );
-                    searchStatus.setForeground(Color.DARK_GRAY);
+                    directorScroll.setVisible(true);
+                    directorStatus.setText(
+                            directorModel.getSize() +
+                            " matching directors found");
+                    directorStatus.setForeground(Color.DARK_GRAY);
                 }
 
-                namePanel.revalidate();
-                namePanel.repaint();
+                filterMovies.run();
+                directorPanel.revalidate();
+                directorPanel.repaint();
             }
 
             @Override
             public void insertUpdate(DocumentEvent e) {
-                filterMovies();
+                filterDirectors();
             }
 
             @Override
             public void removeUpdate(DocumentEvent e) {
-                filterMovies();
+                filterDirectors();
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                filterMovies();
+                filterDirectors();
             }
         });
 
-        suggestionList.addListSelectionListener(e -> {
-            if (e.getValueIsAdjusting()) return;
+        // Select a director from the suggestions.
+        directorList.addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) {
+                return;
+            }
 
-            Movie selected = suggestionList.getSelectedValue();
+            String selected = directorList.getSelectedValue();
 
             if (selected != null) {
-                selecting[0] = true;
+                selectingDirector[0] = true;
+                selectedDirector[0] = selected;
+                directorField.setText(selected);
+                directorScroll.setVisible(false);
+                directorStatus.setText("Selected: " + selected);
+                directorStatus.setForeground(GOLD);
+                selectingDirector[0] = false;
+
+                filterMovies.run();
+                directorPanel.revalidate();
+                directorPanel.repaint();
+            }
+        });
+
+        // Select a movie from the suggestions.
+        movieList.addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) {
+                return;
+            }
+
+            Movie selected = movieList.getSelectedValue();
+
+            if (selected != null) {
+                selectingMovie[0] = true;
                 selectedMovieId[0] = selected.id;
                 nameField.setText(selected.title);
-                suggestionScroll.setVisible(false);
-                searchStatus.setText("Selected: " + selected.title);
-                searchStatus.setForeground(GOLD);
-                selecting[0] = false;
+                movieScroll.setVisible(false);
+                movieStatus.setText("Selected: " + selected.title);
+                movieStatus.setForeground(GOLD);
+                selectingMovie[0] = false;
 
                 namePanel.revalidate();
                 namePanel.repaint();
@@ -328,19 +489,19 @@ public class DiaryPage extends JPanel {
         });
 
         addField(moviePanel, gbc, 0, "Movie name", namePanel);
-        addField(moviePanel, gbc, 1, "Rating (0-10)", ratingField);
-        addField(moviePanel, gbc, 2, "Date watched", datePanel);
-        addField(moviePanel, gbc, 3, "Review", reviewScroll);
+        addField(moviePanel, gbc, 1, "Director", directorPanel);
+        addField(moviePanel, gbc, 2, "Rating (0-10)", ratingField);
+        addField(moviePanel, gbc, 3, "Date watched", datePanel);
+        addField(moviePanel, gbc, 4, "Review", reviewScroll);
 
         JOptionPane optionPane = new JOptionPane(
-            moviePanel,
-            JOptionPane.PLAIN_MESSAGE,
-            JOptionPane.OK_CANCEL_OPTION
-        );
+                moviePanel,
+                JOptionPane.PLAIN_MESSAGE,
+                JOptionPane.OK_CANCEL_OPTION);
 
         JDialog dialog = optionPane.createDialog(this, "Add Movie");
         dialog.setResizable(true);
-        dialog.setSize(520, 470);
+        dialog.setSize(560, 650);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
 
@@ -353,9 +514,7 @@ public class DiaryPage extends JPanel {
 
         if (selectedMovieId[0] == -1) {
             JOptionPane.showMessageDialog(
-                this,
-                "Select a movie from the suggestions."
-            );
+                    this, "Select a movie from the suggestions.");
             return;
         }
 
@@ -365,8 +524,7 @@ public class DiaryPage extends JPanel {
 
         if (rating.isEmpty() || date.isEmpty()) {
             JOptionPane.showMessageDialog(
-                this, "Enter a rating and select a date."
-            );
+                    this, "Enter a rating and select a date.");
             return;
         }
 
@@ -377,23 +535,21 @@ public class DiaryPage extends JPanel {
 
             if (value < 0 || value > 10) {
                 JOptionPane.showMessageDialog(
-                    this, "Rating must be between 0 and 10."
-                );
+                        this, "Rating must be between 0 and 10.");
                 return;
             }
 
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(
-                this, "Enter a valid rating."
-            );
+                    this, "Enter a valid rating.");
             return;
         }
 
         String sql =
-            "INSERT INTO diary_entries " +
-            "(tmdb_id, rating, watched_date, review, user_id) " +
-            "SELECT ?, ?, ?, ?, u.user_id " +
-            "FROM mm70_users.users u WHERE u.username = ?";
+                "INSERT INTO diary_entries " +
+                "(tmdb_id, rating, watched_date, review, user_id) " +
+                "SELECT ?, ?, ?, ?, u.user_id " +
+                "FROM mm70_users.users u WHERE u.username = ?";
 
         try (Connection con = DatabaseManager.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -408,9 +564,8 @@ public class DiaryPage extends JPanel {
 
             if (inserted == 0) {
                 JOptionPane.showMessageDialog(
-                    this,
-                    "Your account was not found. Please log in again."
-                );
+                        this,
+                        "Your account was not found. Please log in again.");
                 return;
             }
 
@@ -433,7 +588,7 @@ public class DiaryPage extends JPanel {
         gbc.gridx = 1;
         gbc.weightx = 1;
 
-        if (row == 3) {
+        if (row == 4) {
             gbc.weighty = 1;
             gbc.fill = GridBagConstraints.BOTH;
         } else {
@@ -449,10 +604,9 @@ public class DiaryPage extends JPanel {
         Window owner = SwingUtilities.getWindowAncestor(this);
 
         JDialog calendar = new JDialog(
-            owner instanceof Frame ? (Frame) owner : null,
-            "Select Date Watched",
-            true
-        );
+                owner instanceof Frame ? (Frame) owner : null,
+                "Select Date Watched",
+                true);
 
         calendar.setSize(390, 400);
         calendar.setLocationRelativeTo(this);
@@ -483,7 +637,8 @@ public class DiaryPage extends JPanel {
 
         JPanel daysPanel = new JPanel(new GridLayout(7, 7, 3, 3));
         daysPanel.setBackground(BG);
-        daysPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        daysPanel.setBorder(
+                BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
         calendar.add(top, BorderLayout.NORTH);
         calendar.add(daysPanel, BorderLayout.CENTER);
@@ -491,8 +646,7 @@ public class DiaryPage extends JPanel {
         YearMonth[] currentMonth = {YearMonth.now()};
 
         Runnable update = () -> updateCalendar(
-            currentMonth[0], monthLabel, daysPanel, dateField, calendar
-        );
+                currentMonth[0], monthLabel, daysPanel, dateField, calendar);
 
         previous.addActionListener(e -> {
             currentMonth[0] = currentMonth[0].minusMonths(1);
@@ -516,18 +670,16 @@ public class DiaryPage extends JPanel {
             yearList.setSelectedItem(currentMonth[0].getYear());
 
             int result = JOptionPane.showConfirmDialog(
-                calendar, yearList, "Select Year",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE
-            );
+                    calendar, yearList, "Select Year",
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE);
 
             if (result == JOptionPane.OK_OPTION) {
                 Integer year = (Integer) yearList.getSelectedItem();
 
                 if (year != null) {
                     currentMonth[0] = YearMonth.of(
-                        year, currentMonth[0].getMonth()
-                    );
+                            year, currentMonth[0].getMonth());
                     update.run();
                 }
             }
@@ -541,13 +693,12 @@ public class DiaryPage extends JPanel {
                                 JPanel daysPanel, JTextField dateField,
                                 JDialog calendar) {
         monthLabel.setText(
-            month.getMonth().toString() + " " + month.getYear()
-        );
+                month.getMonth().toString() + " " + month.getYear());
 
         daysPanel.removeAll();
 
         String[] weekdays = {
-            "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
+                "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
         };
 
         for (String day : weekdays) {
@@ -570,10 +721,8 @@ public class DiaryPage extends JPanel {
 
             button.addActionListener(e -> {
                 dateField.setText(
-                    month.atDay(selectedDay).format(
-                        DateTimeFormatter.ofPattern("dd-MM-yyyy")
-                    )
-                );
+                        month.atDay(selectedDay).format(
+                                DateTimeFormatter.ofPattern("dd-MM-yyyy")));
                 calendar.dispose();
             });
 
@@ -592,7 +741,8 @@ public class DiaryPage extends JPanel {
                             String rating, String date, String review) {
         JPanel movie = new JPanel(new BorderLayout(10, 10));
         movie.setBackground(CARD);
-        movie.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        movie.setBorder(
+                BorderFactory.createEmptyBorder(10, 10, 10, 10));
         movie.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
         movie.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -604,8 +754,7 @@ public class DiaryPage extends JPanel {
         if (file.exists()) {
             ImageIcon icon = new ImageIcon(file.getAbsolutePath());
             Image image = icon.getImage().getScaledInstance(
-                100, 150, Image.SCALE_SMOOTH
-            );
+                    100, 150, Image.SCALE_SMOOTH);
             poster.setIcon(new ImageIcon(image));
         } else {
             poster.setText("No Poster");
@@ -616,8 +765,7 @@ public class DiaryPage extends JPanel {
         details.setBackground(CARD);
 
         JLabel movieTitle = new JLabel(
-            title == null ? "Untitled" : title
-        );
+                title == null ? "Untitled" : title);
         movieTitle.setForeground(GOLD);
         movieTitle.setFont(new Font("Arial", Font.BOLD, 20));
         movieTitle.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -636,8 +784,7 @@ public class DiaryPage extends JPanel {
         movieDate.setForeground(TEXT);
 
         JLabel movieReview = new JLabel(
-            "<html>Review: " + escapeHtml(review) + "</html>"
-        );
+                "<html>Review: " + escapeHtml(review) + "</html>");
         movieReview.setForeground(TEXT);
 
         details.add(movieTitle);
@@ -655,17 +802,16 @@ public class DiaryPage extends JPanel {
 
         removeButton.addActionListener(e -> {
             int answer = JOptionPane.showConfirmDialog(
-                this,
-                "Remove this diary entry?",
-                "Confirm",
-                JOptionPane.YES_NO_OPTION
-            );
+                    this,
+                    "Remove this diary entry?",
+                    "Confirm",
+                    JOptionPane.YES_NO_OPTION);
 
             if (answer == JOptionPane.YES_OPTION) {
                 String sql =
-                    "DELETE d FROM diary_entries d " +
-                    "JOIN mm70_users.users u ON u.user_id = d.user_id " +
-                    "WHERE d.entry_id = ? AND u.username = ?";
+                        "DELETE d FROM diary_entries d " +
+                        "JOIN mm70_users.users u ON u.user_id = d.user_id " +
+                        "WHERE d.entry_id = ? AND u.username = ?";
 
                 try (Connection con = DatabaseManager.getConnection();
                      PreparedStatement ps = con.prepareStatement(sql)) {
@@ -679,9 +825,8 @@ public class DiaryPage extends JPanel {
                         refreshDiary();
                     } else {
                         JOptionPane.showMessageDialog(
-                            this,
-                            "Entry not found or not owned by your account."
-                        );
+                                this,
+                                "Entry not found or not owned by your account.");
                     }
 
                 } catch (Exception ex) {
@@ -699,20 +844,25 @@ public class DiaryPage extends JPanel {
         }
 
         JButton favouriteButton = new JButton(
-            favourite ? "♥ Remove Favourite" : "♡ Add Favourite"
-        );
+                favourite ? "♥ Remove Favourite" : "♡ Add Favourite");
         favouriteButton.setForeground(TEXT);
         favouriteButton.setBackground(RED);
         favouriteButton.setFocusPainted(false);
-
         favouriteButton.addActionListener(e -> toggleFavourite(id));
 
+        JButton suggestButton = new JButton("Suggest to Friend");
+        suggestButton.setForeground(TEXT);
+        suggestButton.setBackground(RED);
+        suggestButton.setFocusPainted(false);
+        suggestButton.addActionListener(
+                e -> chooseFriendToSuggest(id, title));
+
         JPanel bottomButtons = new JPanel(
-            new FlowLayout(FlowLayout.LEFT, 8, 0)
-        );
+                new FlowLayout(FlowLayout.LEFT, 8, 0));
         bottomButtons.setBackground(CARD);
         bottomButtons.add(removeButton);
         bottomButtons.add(favouriteButton);
+        bottomButtons.add(suggestButton);
 
         movie.add(bottomButtons, BorderLayout.SOUTH);
 
@@ -722,9 +872,9 @@ public class DiaryPage extends JPanel {
 
     private boolean isFavourite(int movieId) throws SQLException {
         String sql =
-            "SELECT 1 FROM mm70_users.user_favourites f " +
-            "JOIN mm70_users.users u ON u.user_id = f.user_id " +
-            "WHERE u.username = ? AND f.tmdb_id = ?";
+                "SELECT 1 FROM mm70_users.user_favourites f " +
+                "JOIN mm70_users.users u ON u.user_id = f.user_id " +
+                "WHERE u.username = ? AND f.tmdb_id = ?";
 
         try (Connection con = DatabaseManager.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -742,9 +892,9 @@ public class DiaryPage extends JPanel {
         try {
             if (isFavourite(movieId)) {
                 String sql =
-                    "DELETE f FROM mm70_users.user_favourites f " +
-                    "JOIN mm70_users.users u ON u.user_id = f.user_id " +
-                    "WHERE u.username = ? AND f.tmdb_id = ?";
+                        "DELETE f FROM mm70_users.user_favourites f " +
+                        "JOIN mm70_users.users u ON u.user_id = f.user_id " +
+                        "WHERE u.username = ? AND f.tmdb_id = ?";
 
                 try (Connection con = DatabaseManager.getConnection();
                      PreparedStatement ps = con.prepareStatement(sql)) {
@@ -756,23 +906,21 @@ public class DiaryPage extends JPanel {
 
                     if (deleted == 0) {
                         JOptionPane.showMessageDialog(
-                            this, "Favourite was not found."
-                        );
+                                this, "Favourite was not found.");
                         return;
                     }
                 }
 
                 JOptionPane.showMessageDialog(
-                    this, "Removed from Favourites."
-                );
+                        this, "Removed from Favourites.");
 
             } else {
                 String sql =
-                    "INSERT INTO mm70_users.user_favourites " +
-                    "(user_id, tmdb_id) " +
-                    "SELECT user_id, ? FROM mm70_users.users " +
-                    "WHERE username = ? " +
-                    "ON DUPLICATE KEY UPDATE tmdb_id = VALUES(tmdb_id)";
+                        "INSERT INTO mm70_users.user_favourites " +
+                        "(user_id, tmdb_id) " +
+                        "SELECT user_id, ? FROM mm70_users.users " +
+                        "WHERE username = ? " +
+                        "ON DUPLICATE KEY UPDATE tmdb_id = VALUES(tmdb_id)";
 
                 try (Connection con = DatabaseManager.getConnection();
                      PreparedStatement ps = con.prepareStatement(sql)) {
@@ -784,16 +932,14 @@ public class DiaryPage extends JPanel {
 
                     if (inserted == 0) {
                         JOptionPane.showMessageDialog(
-                            this,
-                            "Could not find your account. Please log in again."
-                        );
+                                this,
+                                "Could not find your account. Please log in again.");
                         return;
                     }
                 }
 
                 JOptionPane.showMessageDialog(
-                    this, "Added to Favourites!"
-                );
+                        this, "Added to Favourites!");
             }
 
             refreshDiary();
@@ -803,34 +949,122 @@ public class DiaryPage extends JPanel {
         }
     }
 
+    private void chooseFriendToSuggest(int movieId, String movieTitle) {
+        try {
+            java.util.List<String> friends =
+                    UserDatabase.getFriends(main.getUsername());
+
+            if (friends == null || friends.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "You don't have any friends yet. Add and accept friends first.");
+                return;
+            }
+
+            JList<String> friendList =
+                    new JList<>(friends.toArray(new String[0]));
+            friendList.setSelectionMode(
+                    ListSelectionModel.SINGLE_SELECTION);
+            friendList.setSelectedIndex(0);
+
+            int result = JOptionPane.showConfirmDialog(
+                    this,
+                    new JScrollPane(friendList),
+                    "Suggest \"" + movieTitle + "\" to a friend",
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE);
+
+            if (result != JOptionPane.OK_OPTION) {
+                return;
+            }
+
+            String selectedFriend = friendList.getSelectedValue();
+
+            if (selectedFriend == null) {
+                JOptionPane.showMessageDialog(
+                        this, "Select a friend first.");
+                return;
+            }
+
+            sendMovieSuggestion(movieId, selectedFriend, movieTitle);
+
+        } catch (Exception ex) {
+            showError("Could not load your friends.", ex);
+        }
+    }
+
+    private void sendMovieSuggestion(
+            int movieId, String friendUsername, String movieTitle) {
+
+        String sql =
+                "INSERT INTO mm70_users.movie_suggestions " +
+                "(sender_id, recipient_id, tmdb_id, status, created_at) " +
+                "SELECT sender.user_id, recipient.user_id, ?, 'pending', CURRENT_TIMESTAMP " +
+                "FROM mm70_users.users sender " +
+                "JOIN mm70_users.users recipient " +
+                "WHERE sender.username = ? AND recipient.username = ? " +
+                "AND sender.user_id <> recipient.user_id " +
+                "ON DUPLICATE KEY UPDATE status = 'pending', " +
+                "created_at = CURRENT_TIMESTAMP";
+
+        try (Connection con = DatabaseManager.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, movieId);
+            ps.setString(2, main.getUsername());
+            ps.setString(3, friendUsername);
+
+            int rows = ps.executeUpdate();
+
+            if (rows > 0) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "\"" + movieTitle + "\" suggested to " +
+                                friendUsername + "!");
+            } else {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Could not send the suggestion. Check that both accounts exist.");
+            }
+
+        } catch (Exception ex) {
+            showError(
+                    "Could not send suggestion. Make sure the movie_suggestions table exists.",
+                    ex);
+        }
+    }
+
     private String escapeHtml(String value) {
-        if (value == null) return "";
+        if (value == null) {
+            return "";
+        }
 
         return value.replace("&", "&amp;")
-                    .replace("<", "&lt;")
-                    .replace(">", "&gt;")
-                    .replace("\"", "&quot;")
-                    .replace("'", "&#39;");
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     private void showError(String message, Exception ex) {
         ex.printStackTrace();
 
         JOptionPane.showMessageDialog(
-            this,
-            message + "\n" + ex.getMessage(),
-            "Diary Error",
-            JOptionPane.ERROR_MESSAGE
-        );
+                this,
+                message + "\n" + ex.getMessage(),
+                "Diary Error",
+                JOptionPane.ERROR_MESSAGE);
     }
 
     private static class Movie {
         private final int id;
         private final String title;
+        private final String director;
 
-        Movie(int id, String title) {
+        Movie(int id, String title, String director) {
             this.id = id;
             this.title = title == null ? "Untitled movie" : title;
+            this.director = director == null ? "" : director.trim();
         }
 
         @Override
