@@ -1,4 +1,3 @@
-
 import javax.swing.*;
 import javax.swing.event.*;
 import java.awt.*;
@@ -6,6 +5,7 @@ import java.io.File;
 import java.sql.*;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 
 public class DiaryPage extends JPanel {
 
@@ -128,7 +128,17 @@ public class DiaryPage extends JPanel {
         JTextField nameField = new JTextField(22);
         JTextField ratingField = new JTextField(18);
         JTextField dateField = new JTextField(12);
-        JTextField reviewField = new JTextField(18);
+
+        // Larger, multi-line review field
+        JTextArea reviewArea = new JTextArea(5, 22);
+        reviewArea.setLineWrap(true);
+        reviewArea.setWrapStyleWord(true);
+        reviewArea.setFont(new Font("Arial", Font.PLAIN, 14));
+
+        JScrollPane reviewScroll = new JScrollPane(reviewArea);
+        reviewScroll.setPreferredSize(new Dimension(280, 100));
+        reviewScroll.setVerticalScrollBarPolicy(
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 
         dateField.setEditable(false);
         dateField.setBackground(Color.WHITE);
@@ -140,9 +150,11 @@ public class DiaryPage extends JPanel {
         datePanel.add(dateField, BorderLayout.CENTER);
         datePanel.add(calendarButton, BorderLayout.EAST);
 
+        // Movie suggestions, like the Watchlist search
         DefaultListModel<Movie> suggestionModel = new DefaultListModel<>();
         JList<Movie> suggestionList = new JList<>(suggestionModel);
-        suggestionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        suggestionList.setSelectionMode(
+                ListSelectionModel.SINGLE_SELECTION);
         suggestionList.setVisibleRowCount(5);
         suggestionList.setFixedCellHeight(24);
 
@@ -150,70 +162,96 @@ public class DiaryPage extends JPanel {
         suggestionScroll.setPreferredSize(new Dimension(280, 120));
         suggestionScroll.setVisible(false);
 
+        JLabel searchStatus = new JLabel("Type to search movies");
+        searchStatus.setForeground(Color.DARK_GRAY);
+
         JPanel namePanel = new JPanel();
         namePanel.setLayout(new BoxLayout(namePanel, BoxLayout.Y_AXIS));
         namePanel.add(nameField);
         namePanel.add(suggestionScroll);
+        namePanel.add(searchStatus);
 
         int[] selectedMovieId = {-1};
         boolean[] selecting = {false};
 
+        // Load movies from the database once, then filter as the user types
+        ArrayList<Movie> allMovies = new ArrayList<>();
+
+        try (Connection con = DatabaseManager.getConnection();
+             PreparedStatement ps = con.prepareStatement(
+                     "SELECT tmdb_id, title FROM movies_new ORDER BY title");
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                allMovies.add(new Movie(
+                        rs.getInt("tmdb_id"),
+                        rs.getString("title")));
+            }
+
+        } catch (Exception ex) {
+            showError("Could not load movies from database.", ex);
+            return;
+        }
+
         nameField.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e) {
-                searchMovies();
-            }
 
-            public void removeUpdate(DocumentEvent e) {
-                searchMovies();
-            }
-
-            public void changedUpdate(DocumentEvent e) {
-                searchMovies();
-            }
-
-            void searchMovies() {
+            void filterMovies() {
                 if (selecting[0]) {
                     return;
                 }
 
                 selectedMovieId[0] = -1;
+                suggestionList.clearSelection();
                 suggestionModel.clear();
-                suggestionScroll.setVisible(false);
 
-                String text = nameField.getText().trim();
+                String text = nameField.getText().trim()
+                        .toLowerCase();
 
                 if (text.isEmpty()) {
+                    suggestionScroll.setVisible(false);
+                    searchStatus.setText("Type to search movies");
                     namePanel.revalidate();
                     namePanel.repaint();
                     return;
                 }
 
-                String sql = "SELECT tmdb_id, title FROM movies_new " +
-                        "WHERE title LIKE ? ORDER BY title LIMIT 100";
-
-                try (Connection con = DatabaseManager.getConnection();
-                     PreparedStatement ps = con.prepareStatement(sql)) {
-
-                    ps.setString(1, text + "%");
-
-                    try (ResultSet rs = ps.executeQuery()) {
-                        while (rs.next()) {
-                            suggestionModel.addElement(
-                                    new Movie(rs.getInt("tmdb_id"),
-                                              rs.getString("title")));
-                        }
+                // Same matching behaviour as Watchlist: contains()
+                for (Movie movie : allMovies) {
+                    if (movie.title.toLowerCase().contains(text)) {
+                        suggestionModel.addElement(movie);
                     }
-
-                    suggestionScroll.setVisible(!suggestionModel.isEmpty());
-                    namePanel.revalidate();
-                    namePanel.repaint();
-
-                } catch (Exception ex) {
-                    ex.printStackTrace();
                 }
+
+                if (suggestionModel.isEmpty()) {
+                    suggestionScroll.setVisible(false);
+                    searchStatus.setText(
+                            "Movie not found!");
+                    searchStatus.setForeground(RED);
+                } else {
+                    suggestionScroll.setVisible(true);
+                    searchStatus.setText(
+                            suggestionModel.getSize() + " matching movies found");
+                    searchStatus.setForeground(Color.DARK_GRAY);
+                }
+
+                namePanel.revalidate();
+                namePanel.repaint();
+            }
+
+            public void insertUpdate(DocumentEvent e) {
+                filterMovies();
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                filterMovies();
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+                filterMovies();
             }
         });
 
+        // Select a movie from the suggestions
         suggestionList.addListSelectionListener(e -> {
             if (e.getValueIsAdjusting()) {
                 return;
@@ -226,14 +264,18 @@ public class DiaryPage extends JPanel {
                 selectedMovieId[0] = selected.id;
                 nameField.setText(selected.title);
                 suggestionScroll.setVisible(false);
+                searchStatus.setText("Selected: " + selected.title);
+                searchStatus.setForeground(GOLD);
                 selecting[0] = false;
+                namePanel.revalidate();
+                namePanel.repaint();
             }
         });
 
         addField(moviePanel, gbc, 0, "Movie name", namePanel);
         addField(moviePanel, gbc, 1, "Rating (0-10)", ratingField);
         addField(moviePanel, gbc, 2, "Date watched", datePanel);
-        addField(moviePanel, gbc, 3, "Review", reviewField);
+        addField(moviePanel, gbc, 3, "Review", reviewScroll);
 
         JOptionPane optionPane = new JOptionPane(
                 moviePanel,
@@ -242,8 +284,8 @@ public class DiaryPage extends JPanel {
         );
 
         JDialog dialog = optionPane.createDialog(this, "Add Movie");
-        dialog.setResizable(false);
-        dialog.setSize(460, 310);
+        dialog.setResizable(true);
+        dialog.setSize(520, 470);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
 
@@ -254,15 +296,16 @@ public class DiaryPage extends JPanel {
             return;
         }
 
+        // A movie must be selected from the database suggestions
         if (selectedMovieId[0] == -1) {
             JOptionPane.showMessageDialog(this,
-                    "Select a movie from the suggestions.");
+                    "Movie not found in database! Please select a movie from the suggestions.");
             return;
         }
 
         String rating = ratingField.getText().trim();
         String date = dateField.getText().trim();
-        String review = reviewField.getText().trim();
+        String review = reviewArea.getText().trim();
 
         if (rating.isEmpty() || date.isEmpty()) {
             JOptionPane.showMessageDialog(this,
@@ -305,11 +348,20 @@ public class DiaryPage extends JPanel {
         gbc.gridy = row;
         gbc.gridx = 0;
         gbc.weightx = 0;
+        gbc.weighty = 0;
         panel.add(new JLabel(label), gbc);
 
         gbc.gridx = 1;
         gbc.weightx = 1;
+        if (row == 3) {
+            gbc.weighty = 1;
+            gbc.fill = GridBagConstraints.BOTH;
+        } else {
+            gbc.weighty = 0;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+        }
         panel.add(field, gbc);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
     }
 
     void showCalendar(JTextField dateField) {
@@ -533,7 +585,7 @@ public class DiaryPage extends JPanel {
 
         Movie(int id, String title) {
             this.id = id;
-            this.title = title;
+            this.title = title == null ? "Untitled movie" : title;
         }
 
         public String toString() {

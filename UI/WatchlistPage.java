@@ -1,4 +1,3 @@
-
 import javax.swing.*;
 import javax.swing.event.*;
 import java.awt.*;
@@ -173,39 +172,75 @@ public class WatchlistPage extends JPanel {
         return card;
     }
 
-    // Mark watched dialog with calendar
+    // Mark watched dialog: normal rating/date fields, enlarged review area
     void markWatched(int movieId) {
 
-        JPanel form = new JPanel(new GridLayout(3, 2, 10, 10));
+        JPanel form = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
 
-        JTextField ratingField = new JTextField();
-        JTextField dateField = new JTextField();
+        gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JTextField ratingField = new JTextField(10);
+
+        JTextField dateField = new JTextField(10);
         dateField.setEditable(false);
         dateField.setBackground(Color.WHITE);
 
         JButton calendarButton = new JButton("📅");
         calendarButton.setToolTipText("Select watched date");
 
-        JPanel datePanel = new JPanel(new BorderLayout(5, 0));
-        datePanel.add(dateField, BorderLayout.CENTER);
-        datePanel.add(calendarButton, BorderLayout.EAST);
+        JPanel datePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        datePanel.add(dateField);
+        datePanel.add(calendarButton);
 
         calendarButton.addActionListener(e -> showCalendar(dateField));
 
-        JTextField reviewField = new JTextField();
+        JTextArea reviewArea = new JTextArea(5, 25);
+        reviewArea.setLineWrap(true);
+        reviewArea.setWrapStyleWord(true);
+        reviewArea.setFont(new Font("Arial", Font.PLAIN, 14));
 
-        form.add(new JLabel("Rating (0-10)"));
-        form.add(ratingField);
+        JScrollPane reviewScroll = new JScrollPane(reviewArea);
+        reviewScroll.setPreferredSize(new Dimension(280, 110));
+        reviewScroll.setVerticalScrollBarPolicy(
+            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 
-        form.add(new JLabel("Date watched"));
-        form.add(datePanel);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 0;
+        gbc.weighty = 0;
+        form.add(new JLabel("Rating (0-10)"), gbc);
 
-        form.add(new JLabel("Review"));
-        form.add(reviewField);
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        form.add(ratingField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.weightx = 0;
+        form.add(new JLabel("Date watched"), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        form.add(datePanel, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.weightx = 0;
+        gbc.weighty = 1;
+        form.add(new JLabel("Review"), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.BOTH;
+        form.add(reviewScroll, gbc);
 
         int result = JOptionPane.showConfirmDialog(
             this, form, "Mark Movie as Watched",
-            JOptionPane.OK_CANCEL_OPTION);
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.PLAIN_MESSAGE);
 
         if (result != JOptionPane.OK_OPTION) {
             return;
@@ -213,7 +248,7 @@ public class WatchlistPage extends JPanel {
 
         String rating = ratingField.getText().trim();
         String date = dateField.getText().trim();
-        String review = reviewField.getText().trim();
+        String review = reviewArea.getText().trim();
 
         if (rating.isEmpty() || date.isEmpty()) {
             JOptionPane.showMessageDialog(
@@ -493,34 +528,83 @@ public class WatchlistPage extends JPanel {
         dialog.add(bottom, BorderLayout.SOUTH);
 
         ArrayList<Movie> allMovies = new ArrayList<>();
+        ArrayList<Movie> watchlistMovies = new ArrayList<>();
 
+        // Load every movie from the database.
         try (Connection con = DatabaseManager.getConnection();
              PreparedStatement ps = con.prepareStatement(
-                 "SELECT m.tmdb_id, m.title FROM movies_new m " +
-                 "WHERE NOT EXISTS (SELECT 1 FROM watchlist_items w " +
-                 "WHERE w.tmdb_id = m.tmdb_id) ORDER BY m.title");
+                 "SELECT tmdb_id, title FROM movies_new ORDER BY title");
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                allMovies.add(new Movie(
-                    rs.getInt("tmdb_id"), rs.getString("title")));
-            }
+                Movie movie = new Movie(
+                    rs.getInt("tmdb_id"), rs.getString("title"));
 
-            status.setText(allMovies.size() + " movies available");
+                allMovies.add(movie);
+            }
 
         } catch (Exception ex) {
             showError("Could not load movies.", ex);
         }
 
+        // Load movies that are already in the watchlist.
+        try (Connection con = DatabaseManager.getConnection();
+             PreparedStatement ps = con.prepareStatement(
+                 "SELECT tmdb_id FROM watchlist_items");
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                watchlistMovies.add(new Movie(rs.getInt("tmdb_id"), ""));
+            }
+
+        } catch (Exception ex) {
+            showError("Could not check existing watchlist movies.", ex);
+        }
+
+        status.setText(allMovies.size() + " movies in database");
+
         search.getDocument().addDocumentListener(new DocumentListener() {
+
             void filter() {
                 model.clear();
+
                 String text = search.getText().trim().toLowerCase();
+
+                if (text.isEmpty()) {
+                    status.setText(allMovies.size() + " movies in database");
+                    return;
+                }
+
+                int matchesInDatabase = 0;
+                int alreadyAdded = 0;
 
                 for (Movie movie : allMovies) {
                     if (movie.title.toLowerCase().contains(text)) {
-                        model.addElement(movie);
+                        matchesInDatabase++;
+
+                        boolean existsInWatchlist = false;
+
+                        for (Movie existing : watchlistMovies) {
+                            if (existing.id == movie.id) {
+                                existsInWatchlist = true;
+                                break;
+                            }
+                        }
+
+                        if (existsInWatchlist) {
+                            alreadyAdded++;
+                        } else {
+                            model.addElement(movie);
+                        }
                     }
+                }
+
+                if (matchesInDatabase == 0) {
+                    status.setText("Movie not found!");
+                } else if (model.isEmpty() && alreadyAdded > 0) {
+                    status.setText("Movie already in your watchlist!");
+                } else {
+                    status.setText(model.getSize() + " matching movie(s) found");
                 }
             }
 
