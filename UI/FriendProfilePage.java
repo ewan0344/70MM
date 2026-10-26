@@ -29,51 +29,42 @@ public class FriendProfilePage extends JFrame {
         content.setBackground(BG);
         content.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        // Profile heading and Favourites heading
         JPanel header = new JPanel(new GridLayout(2, 1, 4, 4));
         header.setBackground(BG);
 
         JLabel profileTitle = new JLabel(
-            friendUsername + "'s Profile",
-            SwingConstants.CENTER
-        );
+            friendUsername + "'s Profile", SwingConstants.CENTER);
         profileTitle.setFont(new Font("Arial", Font.BOLD, 26));
         profileTitle.setForeground(GOLD);
 
         JLabel favouritesTitle = new JLabel(
-            "Favourites",
-            SwingConstants.CENTER
-        );
+            "Favourites", SwingConstants.CENTER);
         favouritesTitle.setFont(new Font("Arial", Font.BOLD, 20));
         favouritesTitle.setForeground(TEXT);
 
         header.add(profileTitle);
         header.add(favouritesTitle);
-
         content.add(header, BorderLayout.NORTH);
 
         moviesPanel = new JPanel(new GridLayout(0, 3, 10, 10));
         moviesPanel.setBackground(BG);
 
         JScrollPane scroll = new JScrollPane(moviesPanel);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getViewport().setBackground(BG);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(16);
-
         content.add(scroll, BorderLayout.CENTER);
 
         JButton closeButton = new JButton("Close");
         styleButton(closeButton);
         closeButton.addActionListener(e -> dispose());
 
-        JPanel bottom = new JPanel();
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER));
         bottom.setBackground(BG);
         bottom.add(closeButton);
-
         content.add(bottom, BorderLayout.SOUTH);
 
         setContentPane(content);
-
         loadMovies();
         setVisible(true);
     }
@@ -89,7 +80,10 @@ public class FriendProfilePage extends JFrame {
         moviesPanel.removeAll();
 
         String sql =
-            "SELECT m.tmdb_id, m.title " +
+            "SELECT m.tmdb_id, m.title, " +
+            "(SELECT d.rating FROM diary_entries d " +
+            " WHERE d.user_id = u.user_id AND d.tmdb_id = m.tmdb_id " +
+            " ORDER BY d.entry_id DESC LIMIT 1) AS rating " +
             "FROM mm70_users.user_favourites f " +
             "JOIN mm70_users.users u ON u.user_id = f.user_id " +
             "JOIN movies_new m ON m.tmdb_id = f.tmdb_id " +
@@ -105,28 +99,24 @@ public class FriendProfilePage extends JFrame {
                 int count = 0;
 
                 while (rs.next()) {
-                    int movieId = rs.getInt("tmdb_id");
+                    int id = rs.getInt("tmdb_id");
                     String title = rs.getString("title");
+                    String rating = rs.getString("rating");
 
                     JPanel card = new JPanel(new BorderLayout(5, 7));
                     card.setBackground(CARD);
                     card.setBorder(
-                        BorderFactory.createEmptyBorder(8, 8, 8, 8)
-                    );
+                        BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
                     JLabel poster = new JLabel("", SwingConstants.CENTER);
                     poster.setPreferredSize(new Dimension(150, 180));
 
-                    File file = new File("posters/" + movieId + ".jpg");
+                    File file = new File("posters/" + id + ".jpg");
 
                     if (file.exists()) {
-                        ImageIcon icon =
-                            new ImageIcon(file.getAbsolutePath());
-
+                        ImageIcon icon = new ImageIcon(file.getAbsolutePath());
                         Image image = icon.getImage().getScaledInstance(
-                            130, 170, Image.SCALE_SMOOTH
-                        );
-
+                            130, 170, Image.SCALE_SMOOTH);
                         poster.setIcon(new ImageIcon(image));
                     } else {
                         poster.setText("No Poster");
@@ -135,159 +125,76 @@ public class FriendProfilePage extends JFrame {
 
                     JLabel name = new JLabel(
                         "<html><center>" + escapeHtml(title) +
-                        "</center></html>",
-                        SwingConstants.CENTER
-                    );
+                        "</center></html>", SwingConstants.CENTER);
                     name.setForeground(GOLD);
                     name.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-                    // Open movie details when the title is clicked.
-                    name.addMouseListener(
-                        new java.awt.event.MouseAdapter() {
-                            @Override
-                            public void mouseClicked(
-                                    java.awt.event.MouseEvent e) {
-                                main.showMovieDetails(movieId);
-                            }
+                    name.addMouseListener(new java.awt.event.MouseAdapter() {
+                        @Override
+                        public void mouseClicked(java.awt.event.MouseEvent e) {
+                            main.showMovieDetails(id);
                         }
-                    );
+                    });
 
-                    JButton watchlistButton =
-                        new JButton("Add to Watchlist");
-                    styleButton(watchlistButton);
-                    watchlistButton.addActionListener(
-                        e -> addToWatchlist(movieId)
-                    );
+                    JLabel score = new JLabel(
+                        rating == null
+                            ? "Not rated"
+                            : "Rating: " + rating + "/10",
+                        SwingConstants.CENTER);
+                    score.setForeground(TEXT);
 
-                    JButton suggestButton =
-                        new JButton("Suggest to Friend");
-                    styleButton(suggestButton);
-                    suggestButton.addActionListener(
-                        e -> sendSuggestion(movieId)
-                    );
+                    JButton addButton = new JButton("Add to Watchlist");
+                    styleButton(addButton);
+                    addButton.addActionListener(e -> addToWatchlist(id));
 
-                    JPanel details =
-                        new JPanel(new GridLayout(0, 1, 5, 5));
+                    JPanel details = new JPanel(new GridLayout(0, 1, 5, 5));
                     details.setBackground(CARD);
                     details.add(name);
-                    details.add(watchlistButton);
-                    details.add(suggestButton);
+                    details.add(score);
+                    details.add(addButton);
 
                     card.add(poster, BorderLayout.CENTER);
                     card.add(details, BorderLayout.SOUTH);
-
                     moviesPanel.add(card);
                     count++;
                 }
 
                 if (count == 0) {
                     showMessage(
-                        friendUsername +
-                        " hasn't added any favourites yet."
-                    );
+                        friendUsername + " hasn't added any favourites yet.");
                 }
             }
 
         } catch (Exception ex) {
             ex.printStackTrace();
-            showMessage(
-                "Could not load favourites:\n" + ex.getMessage()
-            );
+            showMessage("Could not load favourites: " + ex.getMessage());
         }
 
         moviesPanel.revalidate();
         moviesPanel.repaint();
     }
 
-    // Add the friend's favourite to the CURRENT user's watchlist.
     private void addToWatchlist(int movieId) {
         String sql =
-            "INSERT INTO watchlist_items_new " +
-            "(user_id, tmdb_id, status) " +
-            "SELECT u.user_id, ?, 'WANTED' " +
-            "FROM mm70_users.users u " +
-            "WHERE u.username = ? " +
-            "ON DUPLICATE KEY UPDATE status = " +
-            "IF(status = 'WATCHED', status, 'WANTED')";
+            "INSERT INTO watchlist_items (user_id, tmdb_id, status) " +
+            "VALUES ((SELECT user_id FROM mm70_users.users WHERE username = ?), " +
+            "?, 'WANTED')";
 
         try (Connection con = DatabaseManager.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            ps.setInt(1, movieId);
-            ps.setString(2, main.getUsername());
-
-            int rows = ps.executeUpdate();
-
-            if (rows == 0) {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Your account was not found. Please log in again."
-                );
-                return;
-            }
+            ps.setString(1, main.getUsername());
+            ps.setInt(2, movieId);
+            ps.executeUpdate();
 
             JOptionPane.showMessageDialog(
-                this,
-                "Movie added to your watchlist!"
-            );
+                this, "Added to your watchlist!");
 
         } catch (Exception ex) {
-            ex.printStackTrace();
-
             JOptionPane.showMessageDialog(
                 this,
-                "Could not add movie to your watchlist:\n" +
-                ex.getMessage(),
-                "Watchlist Error",
-                JOptionPane.ERROR_MESSAGE
-            );
-        }
-    }
-
-    // Send a movie suggestion to the friend.
-    private void sendSuggestion(int movieId) {
-        String sql =
-            "INSERT INTO mm70_users.movie_suggestions " +
-            "(sender_id, recipient_id, tmdb_id) " +
-            "SELECT s.user_id, r.user_id, ? " +
-            "FROM mm70_users.users s " +
-            "JOIN mm70_users.users r " +
-            "WHERE s.username = ? " +
-            "AND r.username = ? " +
-            "AND s.user_id <> r.user_id " +
-            "ON DUPLICATE KEY UPDATE " +
-            "status = 'pending', created_at = CURRENT_TIMESTAMP";
-
-        try (Connection con = DatabaseManager.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-
-            ps.setInt(1, movieId);
-            ps.setString(2, main.getUsername());
-            ps.setString(3, friendUsername);
-
-            int rows = ps.executeUpdate();
-
-            if (rows > 0) {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Movie suggestion sent to " + friendUsername + "!"
-                );
-            } else {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Could not find both user accounts."
-                );
-            }
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
-
-            JOptionPane.showMessageDialog(
-                this,
-                "Could not send suggestion:\n" + ex.getMessage(),
-                "Suggestion Error",
-                JOptionPane.ERROR_MESSAGE
-            );
+                "Could not add to watchlist. Check that watchlist_items " +
+                "has a user_id column.\nError: " + ex.getMessage());
         }
     }
 
@@ -298,13 +205,10 @@ public class FriendProfilePage extends JFrame {
             "<html><center>" +
             escapeHtml(message).replace("\n", "<br>") +
             "</center></html>",
-            SwingConstants.CENTER
-        );
+            SwingConstants.CENTER);
 
         label.setForeground(TEXT);
         moviesPanel.add(label);
-        moviesPanel.revalidate();
-        moviesPanel.repaint();
     }
 
     private String escapeHtml(String value) {

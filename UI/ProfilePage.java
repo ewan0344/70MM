@@ -1,3 +1,4 @@
+
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
@@ -34,23 +35,58 @@ public class ProfilePage extends JPanel {
         title.setFont(new Font("Arial", Font.BOLD, 24));
         title.setForeground(TEXT);
 
+        // Logo
         JLabel logo = new JLabel("70mm", SwingConstants.RIGHT);
         logo.setFont(new Font("Impact", Font.BOLD, 40));
         logo.setForeground(GOLD);
 
+        // Logout button
+        JButton logoutButton = new JButton("Logout");
+        logoutButton.setFont(new Font("Arial", Font.PLAIN, 11));
+        logoutButton.setForeground(TEXT);
+        logoutButton.setBackground(ACCENT);
+        logoutButton.setFocusPainted(false);
+        logoutButton.setMargin(new Insets(2, 8, 2, 8));
+        logoutButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
+
+        logoutButton.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(
+                    this,
+                    "Are you sure you want to log out?",
+                    "Logout",
+                    JOptionPane.YES_NO_OPTION
+            );
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                main.setUsername("Username");
+                main.showPage("login");
+            }
+        });
+
+        // Stack logo and logout button vertically
+        JPanel logoPanel = new JPanel();
+        logoPanel.setLayout(new BoxLayout(logoPanel, BoxLayout.Y_AXIS));
+        logoPanel.setBackground(BG);
+
+        logo.setAlignmentX(Component.RIGHT_ALIGNMENT);
+        logoPanel.add(logo);
+        logoPanel.add(logoutButton);
+
         top.add(backButton, BorderLayout.WEST);
         top.add(title, BorderLayout.CENTER);
-        top.add(logo, BorderLayout.EAST);
+        top.add(logoPanel, BorderLayout.EAST);
 
         // Username and activity
         JPanel info = new JPanel(new GridLayout(2, 1));
         info.setBackground(BG);
 
-        usernameLabel = new JLabel(main.getUsername(), SwingConstants.CENTER);
+        usernameLabel = new JLabel(
+                main.getUsername(), SwingConstants.CENTER);
         usernameLabel.setForeground(TEXT);
         usernameLabel.setFont(new Font("Arial", Font.BOLD, 20));
 
-        JLabel activity = new JLabel("Recently Watched", SwingConstants.CENTER);
+        JLabel activity = new JLabel(
+                "Recently Watched", SwingConstants.CENTER);
         activity.setForeground(GOLD);
         activity.setFont(new Font("Arial", Font.BOLD, 18));
 
@@ -105,7 +141,8 @@ public class ProfilePage extends JPanel {
         // Refresh when profile is shown
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
-            public void componentShown(java.awt.event.ComponentEvent e) {
+            public void componentShown(
+                    java.awt.event.ComponentEvent e) {
                 usernameLabel.setText(main.getUsername());
                 loadRecentMovies();
             }
@@ -154,7 +191,8 @@ public class ProfilePage extends JPanel {
                     File file = new File("posters/" + movieId + ".jpg");
 
                     if (file.isFile()) {
-                        ImageIcon icon = new ImageIcon(file.getAbsolutePath());
+                        ImageIcon icon =
+                                new ImageIcon(file.getAbsolutePath());
 
                         Image image = icon.getImage().getScaledInstance(
                                 110, 145, Image.SCALE_SMOOTH);
@@ -173,9 +211,11 @@ public class ProfilePage extends JPanel {
                     name.setForeground(GOLD);
                     name.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-                    name.addMouseListener(new java.awt.event.MouseAdapter() {
+                    name.addMouseListener(
+                            new java.awt.event.MouseAdapter() {
                         @Override
-                        public void mouseClicked(java.awt.event.MouseEvent e) {
+                        public void mouseClicked(
+                                java.awt.event.MouseEvent e) {
                             main.showMovieDetails(movieId);
                         }
                     });
@@ -183,7 +223,6 @@ public class ProfilePage extends JPanel {
                     JLabel score = new JLabel(
                             "★ " + (rating == null ? "-" : rating) + "/10",
                             SwingConstants.CENTER);
-
                     score.setForeground(TEXT);
 
                     card.add(poster, BorderLayout.NORTH);
@@ -198,7 +237,6 @@ public class ProfilePage extends JPanel {
                     JLabel empty = new JLabel(
                             "No movies watched yet",
                             SwingConstants.CENTER);
-
                     empty.setForeground(TEXT);
                     recentMovies.add(empty);
                 }
@@ -210,7 +248,6 @@ public class ProfilePage extends JPanel {
             JLabel error = new JLabel(
                     "Could not load recent movies",
                     SwingConstants.CENTER);
-
             error.setForeground(TEXT);
             recentMovies.add(error);
         }
